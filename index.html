@@ -73,7 +73,7 @@ tr.row-pending { background-color: #fffbeb; }
   <!-- Formulario Recuperación -->
   <form id="forgotForm" class="hidden" style="margin-top:16px; border-top:1px solid #eee; padding-top:12px;">
     <h3>Recuperar contraseña</h3>
-    <p class="muted" style="font-size:0.85rem">Introduce el correo electrónico real vinculado a la cuenta para recibir el enlace de restablecimiento.</p>
+    <p class="muted" style="font-size:0.85rem">Introduce tu correo real para recibir el enlace de restablecimiento.</p>
     
     <label>Email de destino</label>
     <input id="recoveryEmail" type="email" placeholder="ejemplo@gmail.com" required>
@@ -220,34 +220,15 @@ tr.row-pending { background-color: #fffbeb; }
       <p id="settlementEmpty" class="muted" style="text-align:center">No hay liquidaciones que coincidan con la búsqueda.</p>
     </div>
   </section>
-
-  <section id="securityCard" class="card">
-    <div class="collapsible-header">
-      <h2>Seguridad</h2>
-      <button type="button" class="secondary btn-sm" onclick="toggleSection('securityBody', this)">Desplegar ▼</button>
-    </div>
-    <div id="securityBody" class="hidden" style="margin-top:14px">
-      <button id="changeOwnPassword" class="secondary" style="width:auto">Cambiar mi contraseña</button>
-      <div id="ownPasswordArea" class="hidden" style="margin-top:12px">
-        <input id="currentOwnPassword" type="password" placeholder="Contraseña actual">
-        <input id="newOwnPassword" type="password" minlength="8" placeholder="Nueva contraseña (mínimo 8 caracteres)" style="margin-top:8px">
-        <input id="repeatOwnPassword" type="password" minlength="8" placeholder="Repetir nueva contraseña" style="margin-top:8px">
-        <button id="saveOwnPassword" style="margin-top:8px;width:auto">Guardar contraseña</button>
-      </div>
-      <div id="securityMsg" class="notice hidden" style="margin-top:12px"></div>
-    </div>
-  </section>
 </div>
 
 <script>
 const SUPABASE_URL = "https://cczzgwxahmsqhkhnfnin.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Kc5V9D0k7c9LJEtDUmk6Ew_oci9Utu0";
-const ready = !SUPABASE_URL.startsWith("PEGA_AQUI") && !SUPABASE_KEY.startsWith("PEGA_AQUI");
-const sb = ready ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let expenses = [];
 let settlements = [];
-let profile = null;
 
 const $ = id => document.getElementById(id);
 $("date").value = new Date().toISOString().slice(0,10);
@@ -298,7 +279,7 @@ $("resetPasswordForm").addEventListener("submit", async e => {
   if (error) {
     msg("resetNotice", "Error: " + error.message, true);
   } else {
-    msg("resetNotice", "Contraseña cambiada con éxito. Ya puedes iniciar sesión.", false);
+    msg("resetNotice", "Contraseña cambiada con éxito. Redirigiendo al login...", false);
     setTimeout(() => {
       show("resetPasswordView", false);
       show("loginView", true);
@@ -306,24 +287,21 @@ $("resetPasswordForm").addEventListener("submit", async e => {
   }
 });
 
+// Inicio de sesión con mapeo explícito de usuarios a correos reales
 $("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
   const username = $("username").value;
   const password = $("password").value;
   
-  // Login directo con el email registrado en auth
-  const { data: { user }, error } = await sb.auth.signInWithPassword({
-    email: username === "Roberto" ? $("recoveryEmail").value || username : username,
+  const targetEmail = username === "Roberto" ? "robertobyv@gmail.com" : "rociogarciaw@gmail.com";
+
+  const { error } = await sb.auth.signInWithPassword({
+    email: targetEmail,
     password: password
   });
 
-  if(error) {
-    // Fallback: si aún usas los correos alias o emails directos
-    const { error: err2 } = await sb.auth.signInWithPassword({
-      email: user ? user.email : (username === "Roberto" ? "roberto@gastos.com" : "rocio@gastos.com"),
-      password: password
-    });
-    if(err2) msg("loginNotice", "Usuario o contraseña incorrectos.", true);
+  if (error) {
+    msg("loginNotice", "Usuario o contraseña incorrectos.", true);
   }
 });
 
@@ -369,6 +347,14 @@ function render(){
   $("difference").textContent = euro(dReal);
   $("pendingBalance").textContent = euro(pending);
 
+  if (rawNeed === 0) {
+    $("balance").textContent = "Cuentas al día: no hay saldo pendiente.";
+  } else if (rawNeed > 0) {
+    $("balance").textContent = `Rocio debe abonar a Roberto ${euro(pending)}`;
+  } else {
+    $("balance").textContent = `Roberto debe abonar a Rocio ${euro(pending)}`;
+  }
+
   const filteredExpenses = filterRecords(expenses);
   $("rows").innerHTML = filteredExpenses.map(x => {
     const isPending = !lastTime || new Date(x.created_at||x.date).getTime() > lastTime;
@@ -386,10 +372,23 @@ function render(){
       </td>
     </tr>`;
   }).join("");
+  show("empty", filteredExpenses.length === 0);
+
+  const filteredSettlements = filterRecords(settlements);
+  $("settlementRows").innerHTML = filteredSettlements.map(x => `
+    <tr>
+      <td>${new Date(x.date + "T12:00:00").toLocaleDateString("es-ES")}</td>
+      <td>${euro(x.amount)}</td>
+      <td>${esc(x.payer)}</td>
+      <td>${esc(x.receiver)}</td>
+      <td>${esc(x.notes)}</td>
+      <td><button class="danger btn-sm" onclick="deleteSettlement('${x.id}')">Eliminar</button></td>
+    </tr>
+  `).join("");
+  show("settlementEmpty", filteredSettlements.length === 0);
 }
 
 async function load(){
-  if(!sb) return;
   const {data:eData} = await sb.from("expenses").select("*").order("date",{ascending:false});
   const {data:sData} = await sb.from("settlements").select("*").order("date",{ascending:false});
   expenses = eData || [];
@@ -397,10 +396,7 @@ async function load(){
   render();
 }
 
-async function boot(){
-  if(!ready) return;
-  
-  // Detectar si venimos de un enlace de recuperación de contraseña
+function boot(){
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === "PASSWORD_RECOVERY") {
       show("loginView", false);
@@ -420,6 +416,9 @@ async function boot(){
 }
 
 $("logout").onclick = () => sb.auth.signOut();
+$("refresh").onclick = () => load();
+$("refreshSettlements").onclick = () => load();
+
 boot();
 </script>
 </body>
