@@ -17,13 +17,13 @@ input,select,textarea,button{width:100%;font:inherit;padding:11px 12px;border:1p
 textarea{min-height:72px;resize:vertical}
 button{border:0;background:#111827;color:#fff;font-weight:700;cursor:pointer}
 button:disabled{opacity:.6;cursor:not-allowed}
-.secondary{background:#e5e7eb;color:#111827}.danger{background:#b42318}
+.secondary{background:#e5e7eb;color:#111827}.danger{background:#b42318;color:#fff}
 .actions{display:flex;gap:10px;margin-top:14px}.actions button{width:auto}
 .stat{background:#f3f4f6;padding:15px;border-radius:12px}.stat small{color:#6b7280}.stat strong{display:block;font-size:1.45rem;margin-top:4px}
 .balance{margin-top:14px;background:#eef8ef;border-radius:12px;padding:15px;font-weight:650}
 .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}
 th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:nowrap}th{color:#6b7280;font-size:.9rem}
-.notice{padding:10px 12px;border-radius:9px;background:#fff7ed;color:#9a3412;margin:10px 0}.error{background:#fef2f2;color:#991b1b}
+.notice{padding:10px 12px;border-radius:9px;background:#fff7ed;color:#9a3412;margin:10px 0}.error{background:#fef2f2;color:#991b1b}.success{background:#ecfdf5;color:#065f46}
 .hidden{display:none!important}.login{max-width:430px;margin:7vh auto}
 .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between}.toolbar button{width:auto}
 .btn-sm{padding:5px 10px;font-size:0.85rem}
@@ -34,22 +34,72 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:
 .collapsible-header h2{margin:0}
 .collapsible-header button{width:auto;padding:6px 14px;font-size:0.85rem}
 
+/* Estilos contraseña y recuperación */
+.password-wrapper{display:flex;gap:6px}
+.password-wrapper button{width:auto;padding:0 14px;background:#e5e7eb;color:#374151}
+.link-btn{background:none;border:none;color:#2563eb;padding:0;font-size:0.85rem;text-decoration:underline;cursor:pointer;width:auto;margin-top:10px}
+
+tr.row-pending { background-color: #fffbeb; }
+.badge-pending { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; border: 1px solid #fde68a; }
+.badge-settled { background: #f3f4f6; color: #6b7280; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+
 @media(max-width:700px){.grid,.summary,.filter-grid,.monthly-grid{grid-template-columns:1fr}.container{padding:12px}.toolbar{align-items:flex-start;flex-direction:column}.toolbar button{width:100%}}
 </style>
 </head>
 <body>
 
+<!-- VISTA DE LOGIN -->
 <div id="loginView" class="login card">
   <h1>Gastos comunes</h1>
   <p class="muted">Carlos y Noa · acceso privado</p>
+  
   <form id="loginForm">
-    <label>Usuario</label><input id="username" type="text" required autocomplete="username">
-    <label style="margin-top:12px">Contraseña</label><input id="password" type="password" required autocomplete="current-password">
+    <label>Usuario</label>
+    <select id="username" required>
+      <option value="Roberto">Roberto</option>
+      <option value="Rocio">Rocio</option>
+    </select>
+    
+    <label style="margin-top:12px">Contraseña</label>
+    <div class="password-wrapper">
+      <input id="password" type="password" required autocomplete="current-password">
+      <button type="button" id="togglePassword">👁️</button>
+    </div>
+    
     <button style="margin-top:14px">Entrar</button>
+    <button type="button" id="showForgotBtn" class="link-btn">¿Has olvidado tu contraseña?</button>
   </form>
-  <div id="loginError" class="notice error hidden"></div>
+
+  <!-- Formulario Recuperación -->
+  <form id="forgotForm" class="hidden" style="margin-top:16px; border-top:1px solid #eee; padding-top:12px;">
+    <h3>Recuperar contraseña</h3>
+    <p class="muted" style="font-size:0.85rem">Introduce el correo electrónico real vinculado a la cuenta para recibir el enlace de restablecimiento.</p>
+    
+    <label>Email de destino</label>
+    <input id="recoveryEmail" type="email" placeholder="ejemplo@gmail.com" required>
+    
+    <div class="actions">
+      <button type="submit">Enviar enlace</button>
+      <button type="button" id="cancelForgotBtn" class="secondary">Cancelar</button>
+    </div>
+  </form>
+
+  <div id="loginNotice" class="notice hidden"></div>
 </div>
 
+<!-- VISTA DE RESTABLECIMIENTO (tras hacer clic en el email) -->
+<div id="resetPasswordView" class="login card hidden">
+  <h1>Restablecer Contraseña</h1>
+  <p class="muted">Introduce tu nueva contraseña</p>
+  <form id="resetPasswordForm">
+    <label>Nueva contraseña (mínimo 8 caracteres)</label>
+    <input id="newRecoveryPassword" type="password" minlength="8" required>
+    <button style="margin-top:14px">Guardar nueva contraseña</button>
+  </form>
+  <div id="resetNotice" class="notice hidden"></div>
+</div>
+
+<!-- VISTA PRINCIPAL -->
 <div id="appView" class="container hidden">
   <div class="toolbar">
     <div><h1>Gastos comunes · Carlos y Noa</h1><div class="muted">Datos compartidos online</div></div>
@@ -114,50 +164,21 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:
 
   <section class="card">
     <h2>Resumen histórico por Meses / Años</h2>
-    <p class="muted">Consulta el acumulado de gastos y liquidaciones acumuladas en cualquier periodo.</p>
-    
     <div class="monthly-grid">
-      <div>
-        <label>Año</label>
-        <select id="summaryYear"><option value="ALL">Todos los años</option></select>
-      </div>
+      <div><label>Año</label><select id="summaryYear"><option value="ALL">Todos los años</option></select></div>
       <div>
         <label>Mes</label>
         <select id="summaryMonth">
           <option value="ALL">Todos los meses</option>
-          <option value="01">Enero</option>
-          <option value="02">Febrero</option>
-          <option value="03">Marzo</option>
-          <option value="04">Abril</option>
-          <option value="05">Mayo</option>
-          <option value="06">Junio</option>
-          <option value="07">Julio</option>
-          <option value="08">Agosto</option>
-          <option value="09">Septiembre</option>
-          <option value="10">Octubre</option>
-          <option value="11">Noviembre</option>
-          <option value="12">Diciembre</option>
+          <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+          <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+          <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+          <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
         </select>
       </div>
-      <div>
-        <label>Quién paga</label>
-        <select id="summaryPayer">
-          <option value="ALL">Todos</option>
-          <option value="Roberto">Roberto</option>
-          <option value="Rocio">Rocio</option>
-        </select>
-      </div>
-      <div>
-        <label>Para quién es</label>
-        <select id="summaryForWhom">
-          <option value="ALL">Todos</option>
-          <option value="Carlos">Carlos</option>
-          <option value="Noa">Noa</option>
-          <option value="Carlos y Noa">Carlos y Noa</option>
-        </select>
-      </div>
+      <div><label>Quién paga</label><select id="summaryPayer"><option value="ALL">Todos</option><option value="Roberto">Roberto</option><option value="Rocio">Rocio</option></select></div>
+      <div><label>Para quién es</label><select id="summaryForWhom"><option value="ALL">Todos</option><option value="Carlos">Carlos</option><option value="Noa">Noa</option><option value="Carlos y Noa">Carlos y Noa</option></select></div>
     </div>
-
     <div class="summary">
       <div class="stat"><small>Gastos Filtrados</small><strong id="histTotalExpenses">0,00 €</strong></div>
       <div class="stat"><small>Liquidaciones Filtradas</small><strong id="histTotalSettlements">0,00 €</strong></div>
@@ -169,18 +190,9 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:
   <section class="card">
     <h2>Búsqueda y Filtros de Tablas</h2>
     <div class="filter-grid">
-      <div>
-        <label>Buscar por texto</label>
-        <input id="searchInput" type="text" placeholder="Buscar por concepto, notas, pagador...">
-      </div>
-      <div>
-        <label>Desde fecha</label>
-        <input id="filterFromDate" type="date">
-      </div>
-      <div>
-        <label>Hasta fecha</label>
-        <input id="filterToDate" type="date">
-      </div>
+      <div><label>Buscar por texto</label><input id="searchInput" type="text" placeholder="Buscar por concepto, notas, pagador..."></div>
+      <div><label>Desde fecha</label><input id="filterFromDate" type="date"></div>
+      <div><label>Hasta fecha</label><input id="filterToDate" type="date"></div>
     </div>
     <div class="actions" style="margin-top:10px">
       <button id="clearFiltersBtn" type="button" class="secondary btn-sm">Limpiar filtros</button>
@@ -191,7 +203,7 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:
     <div class="toolbar"><h2>Gastos registrados</h2><button id="refresh" class="secondary">Actualizar</button></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Fecha</th><th>Cantidad</th><th>Paga</th><th>Para</th><th>Pago</th><th>Observaciones</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Cantidad</th><th>Paga</th><th>Para</th><th>Pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
       <p id="empty" class="muted" style="text-align:center">No hay gastos que coincidan con la búsqueda.</p>
@@ -215,7 +227,6 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:
       <button type="button" class="secondary btn-sm" onclick="toggleSection('securityBody', this)">Desplegar ▼</button>
     </div>
     <div id="securityBody" class="hidden" style="margin-top:14px">
-      <p class="muted">Puedes cambiar tu propia contraseña. Roberto, como administrador, también puede restablecer la contraseña de Rocio.</p>
       <button id="changeOwnPassword" class="secondary" style="width:auto">Cambiar mi contraseña</button>
       <div id="ownPasswordArea" class="hidden" style="margin-top:12px">
         <input id="currentOwnPassword" type="password" placeholder="Contraseña actual">
@@ -223,30 +234,7 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:
         <input id="repeatOwnPassword" type="password" minlength="8" placeholder="Repetir nueva contraseña" style="margin-top:8px">
         <button id="saveOwnPassword" style="margin-top:8px;width:auto">Guardar contraseña</button>
       </div>
-      <div id="adminCard" class="hidden" style="margin-top:20px">
-        <hr><h3>Administración</h3>
-        <p class="muted">Solo Roberto puede restablecer la contraseña de Rocio.</p>
-        <button id="changeRocioPassword" class="secondary" style="width:auto">Cambiar contraseña de Rocio</button>
-        <div id="rocioPasswordArea" class="hidden" style="margin-top:12px">
-          <input id="newRocioPassword" type="password" minlength="8" placeholder="Nueva contraseña para Rocio">
-          <input id="repeatRocioPassword" type="password" minlength="8" placeholder="Repetir nueva contraseña" style="margin-top:8px">
-          <button id="saveRocioPassword" style="margin-top:8px;width:auto">Guardar contraseña de Rocio</button>
-        </div>
-      </div>
       <div id="securityMsg" class="notice hidden" style="margin-top:12px"></div>
-    </div>
-  </section>
-
-  <section class="card">
-    <div class="collapsible-header">
-      <h2>Registro de actividad</h2>
-      <button type="button" class="secondary btn-sm" onclick="toggleSection('activityBody', this)">Desplegar ▼</button>
-    </div>
-    <div id="activityBody" class="hidden" style="margin-top:14px">
-      <div class="table-wrap">
-        <table><thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Gasto</th></tr></thead>
-        <tbody id="activityRows"></tbody></table>
-      </div>
     </div>
   </section>
 </div>
@@ -260,7 +248,6 @@ const sb = ready ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : nu
 let expenses = [];
 let settlements = [];
 let profile = null;
-let editingSettlementId = "";
 
 const $ = id => document.getElementById(id);
 $("date").value = new Date().toISOString().slice(0,10);
@@ -269,8 +256,76 @@ $("settlementDate").value = new Date().toISOString().slice(0,10);
 function euro(n){ return Number(n).toLocaleString("es-ES",{style:"currency",currency:"EUR"}); }
 function esc(s){ return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
 function show(id,on=true){ $(id).classList.toggle("hidden",!on); }
-function msg(id,text){ $(id).textContent=text; show(id,true); }
-function clearMsg(id){ show(id,false); }
+function msg(id,text,isError=true){ 
+  const el = $(id);
+  el.textContent = text; 
+  el.className = `notice ${isError ? 'error' : 'success'}`;
+  show(id, true); 
+}
+
+// Botón Mostrar / Ocultar Contraseña
+$("togglePassword").onclick = () => {
+  const pwd = $("password");
+  pwd.type = pwd.type === "password" ? "text" : "password";
+};
+
+// Toggle formulario de recuperación
+$("showForgotBtn").onclick = () => show("forgotForm", true);
+$("cancelForgotBtn").onclick = () => show("forgotForm", false);
+
+// Envío de correo de recuperación
+$("forgotForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = $("recoveryEmail").value.trim();
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href.split('#')[0]
+  });
+
+  if (error) {
+    msg("loginNotice", "Error al enviar el email: " + error.message, true);
+  } else {
+    msg("loginNotice", "Se ha enviado un correo con el enlace para restablecer la contraseña.", false);
+    show("forgotForm", false);
+  }
+});
+
+// Procesar nueva contraseña tras enlace de email
+$("resetPasswordForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const newPassword = $("newRecoveryPassword").value;
+  const { error } = await sb.auth.updateUser({ password: newPassword });
+
+  if (error) {
+    msg("resetNotice", "Error: " + error.message, true);
+  } else {
+    msg("resetNotice", "Contraseña cambiada con éxito. Ya puedes iniciar sesión.", false);
+    setTimeout(() => {
+      show("resetPasswordView", false);
+      show("loginView", true);
+    }, 2000);
+  }
+});
+
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const username = $("username").value;
+  const password = $("password").value;
+  
+  // Login directo con el email registrado en auth
+  const { data: { user }, error } = await sb.auth.signInWithPassword({
+    email: username === "Roberto" ? $("recoveryEmail").value || username : username,
+    password: password
+  });
+
+  if(error) {
+    // Fallback: si aún usas los correos alias o emails directos
+    const { error: err2 } = await sb.auth.signInWithPassword({
+      email: user ? user.email : (username === "Roberto" ? "roberto@gastos.com" : "rocio@gastos.com"),
+      password: password
+    });
+    if(err2) msg("loginNotice", "Usuario o contraseña incorrectos.", true);
+  }
+});
 
 window.toggleSection = function(bodyId, btnElement) {
   const isHidden = $(bodyId).classList.contains("hidden");
@@ -278,456 +333,93 @@ window.toggleSection = function(bodyId, btnElement) {
   btnElement.textContent = isHidden ? "Plegar ▲" : "Desplegar ▼";
 };
 
-$("settlementPayer").addEventListener("change", e => {
-  $("settlementReceiver").value = e.target.value === "Roberto" ? "Rocio" : "Roberto";
-});
-
-$("searchInput").addEventListener("input", render);
-$("filterFromDate").addEventListener("change", render);
-$("filterToDate").addEventListener("change", render);
-$("clearFiltersBtn").addEventListener("click", () => {
-  $("searchInput").value = "";
-  $("filterFromDate").value = "";
-  $("filterToDate").value = "";
-  render();
-});
-
-$("summaryYear").addEventListener("change", renderHistorySummary);
-$("summaryMonth").addEventListener("change", renderHistorySummary);
-$("summaryPayer").addEventListener("change", renderHistorySummary);
-$("summaryForWhom").addEventListener("change", renderHistorySummary);
-
-async function renderActivity(){
-  if(!sb) return;
-  const {data,error} = await sb.from("activity_log").select("created_at,username,action,amount,expense_date,payer,for_whom,payment_method,notes").order("created_at",{ascending:false}).limit(100);
-  if(error){ console.error(error); return; }
-  const labels={CREATE_EXPENSE:"Creado",UPDATE_EXPENSE:"Modificado",DELETE_EXPENSE:"Eliminado",CREATE_SETTLEMENT:"Liquidación creada",UPDATE_SETTLEMENT:"Liquidación modificada",DELETE_SETTLEMENT:"Liquidación eliminada",CHANGE_PASSWORD:"Cambio de contraseña"};
-  $("activityRows").innerHTML=(data||[]).map(a=>`<tr><td>${new Date(a.created_at).toLocaleString("es-ES")}</td><td>${esc(a.username)}</td><td>${labels[a.action]||esc(a.action)}</td><td>${a.action.includes("SETTLEMENT") ? euro(a.amount) : (a.amount!=null ? `${euro(a.amount)} — ${a.expense_date ? new Date(a.expense_date+"T12:00:00").toLocaleDateString("es-ES") : ""}` : "—")}</td></tr>`).join("");
-}
-
 function filterRecords(items){
   const term = $("searchInput").value.toLowerCase().trim();
   const fromDate = $("filterFromDate").value;
   const toDate = $("filterToDate").value;
-
   return items.filter(x => {
     if(fromDate && x.date < fromDate) return false;
     if(toDate && x.date > toDate) return false;
     if(!term) return true;
-
-    const notes = (x.notes || "").toLowerCase();
-    const payer = (x.payer || "").toLowerCase();
-    const forWhom = (x.for_whom || "").toLowerCase();
-    const receiver = (x.receiver || "").toLowerCase();
-    const paymentMethod = (x.payment_method || "").toLowerCase();
-    const amountStr = String(x.amount);
-
-    return notes.includes(term) || payer.includes(term) || forWhom.includes(term) || receiver.includes(term) || paymentMethod.includes(term) || amountStr.includes(term);
+    return (x.notes||"").toLowerCase().includes(term) || (x.payer||"").toLowerCase().includes(term) || (x.for_whom||"").toLowerCase().includes(term);
   });
-}
-
-function updateYearSelectOptions(){
-  const select = $("summaryYear");
-  const currentVal = select.value;
-  const years = new Set();
-  
-  expenses.forEach(x => { if(x.date) years.add(x.date.substring(0,4)); });
-  settlements.forEach(x => { if(x.date) years.add(x.date.substring(0,4)); });
-  
-  const sortedYears = Array.from(years).sort().reverse();
-  select.innerHTML = `<option value="ALL">Todos los años</option>` + sortedYears.map(y => `<option value="${y}">${y}</option>`).join("");
-  if(Array.from(select.options).some(o => o.value === currentVal)) {
-    select.value = currentVal;
-  }
-}
-
-function renderHistorySummary(){
-  const year = $("summaryYear").value;
-  const month = $("summaryMonth").value;
-  const payer = $("summaryPayer").value;
-  const forWhom = $("summaryForWhom").value;
-
-  const filteredExp = expenses.filter(x => {
-    if(!x.date) return false;
-    const [y, m] = x.date.split("-");
-    if(year !== "ALL" && y !== year) return false;
-    if(month !== "ALL" && m !== month) return false;
-    if(payer !== "ALL" && x.payer !== payer) return false;
-    if(forWhom !== "ALL" && x.for_whom !== forWhom) return false;
-    return true;
-  });
-
-  const filteredSet = settlements.filter(x => {
-    if(!x.date) return false;
-    const [y, m] = x.date.split("-");
-    if(year !== "ALL" && y !== year) return false;
-    if(month !== "ALL" && m !== month) return false;
-    if(payer !== "ALL" && x.payer !== payer) return false;
-    if(forWhom !== "ALL") return false; 
-    return true;
-  });
-
-  const totalExp = filteredExp.reduce((a,x) => a + Number(x.amount), 0);
-  const totalSet = filteredSet.reduce((a,x) => a + Number(x.amount), 0);
-
-  $("histTotalExpenses").textContent = euro(totalExp);
-  $("histTotalSettlements").textContent = euro(totalSet);
-  $("histCountExpenses").textContent = filteredExp.length;
-  $("histCountSettlements").textContent = filteredSet.length;
 }
 
 function render(){
-  let lastSettlement = null;
-  if (settlements.length > 0) {
-    const sortedSettlements = [...settlements].sort((a, b) => {
-      const timeA = new Date(a.created_at || a.date).getTime();
-      const timeB = new Date(b.created_at || b.date).getTime();
-      return timeB - timeA;
-    });
-    lastSettlement = sortedSettlements[0];
-  }
-
+  let lastSettlement = settlements.length ? [...settlements].sort((a,b)=> new Date(b.created_at||b.date) - new Date(a.created_at||a.date))[0] : null;
   const lastTime = lastSettlement ? new Date(lastSettlement.created_at || lastSettlement.date).getTime() : 0;
 
-  const currentCycleExpenses = expenses.filter(x => {
-    if (!lastTime) return true;
-    const xTime = new Date(x.created_at || x.date).getTime();
-    return xTime > lastTime;
-  });
+  const currentExpenses = expenses.filter(x => !lastTime || new Date(x.created_at||x.date).getTime() > lastTime);
+  const currentSettlements = settlements.filter(x => lastTime && new Date(x.created_at||x.date).getTime() > lastTime);
 
-  const currentCycleSettlements = settlements.filter(x => {
-    if (!lastTime) return false;
-    const xTime = new Date(x.created_at || x.date).getTime();
-    return xTime > lastTime;
-  });
-
-  const rReal = currentCycleExpenses.filter(x => x.payer === "Roberto").reduce((a, x) => a + Number(x.amount), 0);
-  const cReal = currentCycleExpenses.filter(x => x.payer === "Rocio").reduce((a, x) => a + Number(x.amount), 0);
+  const rReal = currentExpenses.filter(x => x.payer === "Roberto").reduce((a, x) => a + Number(x.amount), 0);
+  const cReal = currentExpenses.filter(x => x.payer === "Rocio").reduce((a, x) => a + Number(x.amount), 0);
   const dReal = Math.abs(rReal - cReal);
 
-  const netTowardRoberto = currentCycleSettlements.reduce((s, x) => {
+  const netTowardRoberto = currentSettlements.reduce((s, x) => {
     const a = Number(x.amount);
-    if (x.payer === "Rocio" && x.receiver === "Roberto") return s + a;
-    if (x.payer === "Roberto" && x.receiver === "Rocio") return s - a;
-    return s;
+    return x.payer === "Rocio" ? s + a : s - a;
   }, 0);
 
   const rawNeed = (rReal - cReal) / 2 - netTowardRoberto;
   const pending = Math.abs(rawNeed);
-  const isSettled = pending < 0.005;
 
   $("totalRoberto").textContent = euro(rReal);
   $("totalRocio").textContent = euro(cReal);
   $("difference").textContent = euro(dReal);
   $("pendingBalance").textContent = euro(pending);
 
-  if (isSettled && currentCycleExpenses.length === 0) {
-    $("balance").textContent = "Cuentas igualadas: saldo 0,00 € ✅";
-    $("settlementSuggestion").textContent = "No hay ninguna liquidación pendiente. Las cuentas están igualadas.";
-    $("settlementAmount").value = "";
-  } else {
-    let balanceText;
-    if (!currentCycleExpenses.length && !currentCycleSettlements.length) {
-      balanceText = "Todavía no hay gastos en este ciclo.";
-    } else if (rawNeed > 0) {
-      balanceText = `Rocio debe pagar ${euro(pending)} a Roberto para igualar las cuentas.`;
-    } else {
-      balanceText = `Roberto debe pagar ${euro(pending)} a Rocio para igualar las cuentas.`;
-    }
-
-    $("balance").textContent = balanceText;
-
-    const payer = rawNeed > 0 ? "Rocio" : "Roberto";
-    const receiver = rawNeed > 0 ? "Roberto" : "Rocio";
-    $("settlementSuggestion").textContent = `Liquidación pendiente: ${payer} debe pagar ${euro(pending)} a ${receiver}.`;
-    if (!editingSettlementId) {
-      $("settlementPayer").value = payer;
-      $("settlementReceiver").value = receiver;
-      $("settlementAmount").value = pending.toFixed(2);
-    }
-  }
-
-  updateYearSelectOptions();
-  renderHistorySummary();
-
   const filteredExpenses = filterRecords(expenses);
-  const filteredSettlements = filterRecords(settlements);
-
-  // Muestra solo el botón Editar en la tabla de gastos
-  $("rows").innerHTML = filteredExpenses.map(x => `<tr>
-    <td>${new Date(x.date + "T12:00:00").toLocaleDateString("es-ES")}</td>
-    <td>${euro(x.amount)}</td>
-    <td>${esc(x.payer)}</td>
-    <td>${esc(x.for_whom)}</td>
-    <td>${esc(x.payment_method)}</td>
-    <td>${esc(x.notes)}</td>
-    <td>
-      <button class="secondary btn-sm" onclick="editExpense('${x.id}')">Editar</button>
-    </td>
-  </tr>`).join("");
-  $("empty").style.display = filteredExpenses.length ? "none" : "block";
-
-  // Muestra solo el botón Editar en la tabla de liquidaciones
-  $("settlementRows").innerHTML = filteredSettlements.map(x => `<tr>
-    <td>${new Date(x.date + "T12:00:00").toLocaleDateString("es-ES")}</td>
-    <td>${euro(x.amount)}</td>
-    <td>${esc(x.payer)}</td>
-    <td>${esc(x.receiver)}</td>
-    <td>${esc(x.notes)}</td>
-    <td>
-      <button class="secondary btn-sm" onclick="editSettlement('${x.id}')">Editar</button>
-    </td>
-  </tr>`).join("");
-  $("settlementEmpty").style.display = filteredSettlements.length ? "none" : "block";
-}
-
-function resetForm(){
-  $("expenseId").value = "";
-  $("amount").value = "";
-  $("date").value = new Date().toISOString().slice(0,10);
-  $("payer").value = "Roberto";
-  $("forWhom").value = "Carlos";
-  $("paymentMethod").value = "Tarjeta";
-  $("notes").value = "";
-  $("formTitle").textContent = "Nuevo gasto";
-  $("saveBtn").textContent = "Añadir gasto";
-  show("cancelEdit", false);
-  clearMsg("formError");
+  $("rows").innerHTML = filteredExpenses.map(x => {
+    const isPending = !lastTime || new Date(x.created_at||x.date).getTime() > lastTime;
+    return `<tr class="${isPending ? 'row-pending' : ''}">
+      <td>${new Date(x.date + "T12:00:00").toLocaleDateString("es-ES")}</td>
+      <td>${euro(x.amount)}</td>
+      <td>${esc(x.payer)}</td>
+      <td>${esc(x.for_whom)}</td>
+      <td>${esc(x.payment_method)}</td>
+      <td>${esc(x.notes)}</td>
+      <td><span class="${isPending ? 'badge-pending' : 'badge-settled'}">${isPending ? 'Sin liquidar' : 'Liquidado'}</span></td>
+      <td>
+        <button class="secondary btn-sm" onclick="editExpense('${x.id}')">Editar</button>
+        ${isPending ? `<button class="danger btn-sm" onclick="deleteExpense('${x.id}')">Eliminar</button>` : ''}
+      </td>
+    </tr>`;
+  }).join("");
 }
 
 async function load(){
   if(!sb) return;
-  const {data, error} = await sb.from("expenses").select("*").order("date",{ascending:false}).order("created_at",{ascending:false});
-  if(error) return msg("formError", error.message);
-  
-  const {data:setData, error:setError} = await sb.from("settlements").select("*").order("date",{ascending:false}).order("created_at",{ascending:false});
-  if(setError) return msg("settlementError", setError.message);
-  
-  expenses = data || [];
-  settlements = setData || [];
+  const {data:eData} = await sb.from("expenses").select("*").order("date",{ascending:false});
+  const {data:sData} = await sb.from("settlements").select("*").order("date",{ascending:false});
+  expenses = eData || [];
+  settlements = sData || [];
   render();
-  await renderActivity();
-}
-
-window.editExpense = function(id){
-  const x = expenses.find(e=>e.id===id); if(!x) return;
-  $("expenseId").value = x.id;
-  $("amount").value = x.amount;
-  $("date").value = x.date;
-  $("payer").value = x.payer;
-  $("forWhom").value = x.for_whom;
-  $("paymentMethod").value = x.payment_method;
-  $("notes").value = x.notes||"";
-  $("formTitle").textContent = "Editar gasto";
-  $("saveBtn").textContent = "Guardar cambios";
-  show("cancelEdit", true);
-  window.scrollTo({top: 0, behavior: "smooth"});
-};
-
-// Se deshabilita la eliminación explícitamente
-window.deleteExpense = function(id){
-  alert("Los gastos no se pueden eliminar por control de registro. Si hay un error, utiliza la opción 'Editar'.");
-};
-
-$("expenseForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  clearMsg("formError");
-  const saveBtn = $("saveBtn");
-  saveBtn.disabled = true;
-
-  try {
-    const {data:{session}} = await sb.auth.getSession();
-    if(!session) throw new Error("La sesión ha caducado. Vuelve a iniciar sesión.");
-    
-    const amount = Number($("amount").value);
-    if(amount <= 0) throw new Error("La cantidad debe ser mayor que 0.");
-
-    const payload = {
-      amount,
-      date: $("date").value,
-      payer: $("payer").value,
-      for_whom: $("forWhom").value,
-      payment_method: $("paymentMethod").value,
-      notes: $("notes").value.trim()
-    };
-
-    if($("expenseId").value) {
-      payload.updated_by = session.user.id;
-      const {error} = await sb.from("expenses").update(payload).eq("id", $("expenseId").value);
-      if(error) throw error;
-    } else {
-      payload.created_by = session.user.id;
-      const {error} = await sb.from("expenses").insert(payload);
-      if(error) throw error;
-    }
-
-    resetForm();
-    await load();
-  } catch(err) {
-    msg("formError", err.message || "No se pudo guardar el gasto.");
-  } finally {
-    saveBtn.disabled = false;
-  }
-});
-
-$("cancelEdit").onclick = resetForm;
-$("refresh").onclick = load;
-$("logout").onclick = async () => { await sb.auth.signOut(); };
-
-function resetSettlement(){
-  editingSettlementId = "";
-  $("settlementPayer").value = "Roberto";
-  $("settlementReceiver").value = "Rocio";
-  $("settlementAmount").value = "";
-  $("settlementDate").value = new Date().toISOString().slice(0,10);
-  $("settlementNotes").value = "";
-  $("settlementSave").textContent = "Registrar liquidación";
-  show("settlementCancel", false);
-  clearMsg("settlementError");
-  render();
-}
-
-window.editSettlement = function(id){
-  const x = settlements.find(s=>s.id===id); if(!x) return;
-  editingSettlementId = id;
-  if ($("settlementBody").classList.contains("hidden")) {
-    const btn = $("settlementBody").previousElementSibling.querySelector("button");
-    toggleSection("settlementBody", btn);
-  }
-  $("settlementPayer").value = x.payer;
-  $("settlementReceiver").value = x.receiver;
-  $("settlementAmount").value = x.amount;
-  $("settlementDate").value = x.date;
-  $("settlementNotes").value = x.notes||"";
-  $("settlementSave").textContent = "Guardar cambios";
-  show("settlementCancel", true);
-  window.scrollTo({top:0, behavior:"smooth"});
-};
-
-// Se deshabilita la eliminación explícitamente
-window.deleteSettlement = function(id){
-  alert("Las liquidaciones no se pueden eliminar por control de registro. Si hay un error, utiliza la opción 'Editar'.");
-};
-
-$("settlementForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  clearMsg("settlementError");
-  const button = $("settlementSave");
-  button.disabled = true;
-
-  try {
-    const {data:{session}} = await sb.auth.getSession();
-    if(!session) throw new Error("La sesión ha caducado. Vuelve a iniciar sesión.");
-    
-    const payer = $("settlementPayer").value;
-    const receiver = $("settlementReceiver").value;
-    const amount = Number($("settlementAmount").value);
-
-    if(payer === receiver) throw new Error("Quién paga y quién recibe deben ser personas distintas.");
-    if(amount <= 0) throw new Error("La cantidad debe ser mayor que 0.");
-
-    const payload = { amount, date: $("settlementDate").value, payer, receiver, notes: $("settlementNotes").value.trim() };
-
-    let result;
-    if(editingSettlementId){
-      payload.updated_by = session.user.id;
-      result = await sb.from("settlements").update(payload).eq("id", editingSettlementId);
-    } else {
-      payload.created_by = session.user.id;
-      result = await sb.from("settlements").insert(payload);
-    }
-
-    if(result.error) throw result.error;
-    resetSettlement();
-    await load();
-  } catch(err) {
-    msg("settlementError", err.message || "No se pudo registrar la liquidación.");
-  } finally {
-    button.disabled = false;
-  }
-});
-
-$("settlementCancel").onclick = resetSettlement;
-$("refreshSettlements").onclick = load;
-
-$("changeOwnPassword").onclick = () => show("ownPasswordArea", true);
-$("saveOwnPassword").onclick = async () => {
-  clearMsg("securityMsg");
-  const current = $("currentOwnPassword").value;
-  const next = $("newOwnPassword").value;
-  const repeat = $("repeatOwnPassword").value;
-
-  if(!current || next.length < 8 || next !== repeat)
-    return msg("securityMsg", "Comprueba la contraseña actual y que las dos nuevas coincidan (mínimo 8 caracteres).");
-
-  const email = profile.username === "Roberto" ? "roberto@gastos.com" : "rocio@gastos.com";
-  const reauth = await sb.auth.signInWithPassword({email, password: current});
-  if(reauth.error) return msg("securityMsg", "La contraseña actual no es correcta.");
-
-  const {error} = await sb.auth.updateUser({password: next});
-  if(error) return msg("securityMsg", error.message);
-
-  $("currentOwnPassword").value = ""; $("newOwnPassword").value = ""; $("repeatOwnPassword").value = "";
-  show("ownPasswordArea", false);
-  msg("securityMsg", "Contraseña actualizada correctamente.");
-};
-
-$("changeRocioPassword").onclick = () => show("rocioPasswordArea", true);
-$("saveRocioPassword").onclick = async () => {
-  clearMsg("securityMsg");
-  const next = $("newRocioPassword").value;
-  const repeat = $("repeatRocioPassword").value;
-
-  if(next.length < 8 || next !== repeat)
-    return msg("securityMsg", "Las contraseñas deben coincidir y tener al menos 8 caracteres.");
-
-  const {error} = await sb.functions.invoke("admin-change-password", {body: {newPassword: next}});
-  if(error) return msg("securityMsg", "No se ha podido cambiar la contraseña de Rocio: " + error.message);
-
-  $("newRocioPassword").value = ""; $("repeatRocioPassword").value = "";
-  show("rocioPasswordArea", false);
-  msg("securityMsg", "Contraseña de Rocio actualizada correctamente.");
-};
-
-async function setSession(session){
-  if(!session){
-    show("appView", false);
-    show("loginView", true);
-    return;
-  }
-  const {data, error} = await sb.from("profiles").select("*").eq("id", session.user.id).single();
-  if(error || !data){
-    await sb.auth.signOut();
-    return msg("loginError", "El usuario no está configurado en la aplicación.");
-  }
-  profile = data;
-  show("loginView", false);
-  show("appView", true);
-  show("adminCard", profile.role === "admin");
-  await load();
 }
 
 async function boot(){
-  if(!ready){ msg("loginError", "Configura primero SUPABASE_URL y SUPABASE_PUBLISHABLE_KEY."); return; }
-  const {data:{session}} = await sb.auth.getSession();
-  await setSession(session);
-  sb.auth.onAuthStateChange(async (_event, session) => { await setSession(session); });
+  if(!ready) return;
+  
+  // Detectar si venimos de un enlace de recuperación de contraseña
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      show("loginView", false);
+      show("appView", false);
+      show("resetPasswordView", true);
+    } else if (session) {
+      show("loginView", false);
+      show("resetPasswordView", false);
+      show("appView", true);
+      await load();
+    } else {
+      show("appView", false);
+      show("resetPasswordView", false);
+      show("loginView", true);
+    }
+  });
 }
 
-$("loginForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  clearMsg("loginError");
-  const username = $("username").value.trim();
-  if(!["Roberto","Rocio"].includes(username)) return msg("loginError", "Usuario o contraseña incorrectos.");
-  const loginEmails = { Roberto: "roberto@gastos.com", Rocio: "rocio@gastos.com" };
-  const internalEmail = loginEmails[username];
-
-  if(!internalEmail) return msg("loginError", "Usuario o contraseña incorrectos.");
-
-  const {error} = await sb.auth.signInWithPassword({ email: internalEmail, password: $("password").value });
-  if(error){ console.error(error); msg("loginError", "Usuario o contraseña incorrectos."); }
-});
-
+$("logout").onclick = () => sb.auth.signOut();
 boot();
 </script>
 </body>
