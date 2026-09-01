@@ -290,10 +290,13 @@ $("resetPasswordForm").addEventListener("submit", async e => {
 // Inicio de sesión con mapeo explícito de usuarios a correos reales
 $("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const username = $("username").value;
+  const userInput = $("username").value.trim();
   const password = $("password").value;
   
-  const targetEmail = username === "Roberto" ? "robertobyv@gmail.com" : "rociogarciaw@gmail.com";
+  // Mapeo de nombres del desplegable a los correos reales
+  let targetEmail = userInput;
+  if (userInput === "Roberto") targetEmail = "robertobyv@gmail.com";
+  if (userInput === "Rocio") targetEmail = "rociogarciaw@gmail.com";
 
   const { error } = await sb.auth.signInWithPassword({
     email: targetEmail,
@@ -301,7 +304,8 @@ $("loginForm").addEventListener("submit", async e => {
   });
 
   if (error) {
-    msg("loginNotice", "Usuario o contraseña incorrectos.", true);
+    // Muestra el mensaje de error de Supabase en pantalla
+    msg("loginNotice", "Error al acceder: " + error.message, true);
   }
 });
 
