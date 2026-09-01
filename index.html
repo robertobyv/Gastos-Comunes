@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gastos comunes de Carlos y Noa</title>
+
+<!-- Soporte PWA / App Móvil -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111827">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
@@ -34,7 +41,6 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:
 .collapsible-header h2{margin:0}
 .collapsible-header button{width:auto;padding:6px 14px;font-size:0.85rem}
 
-/* Estilos contraseña y recuperación */
 .password-wrapper{display:flex;gap:6px}
 .password-wrapper button{width:auto;padding:0 14px;background:#e5e7eb;color:#374151}
 .link-btn{background:none;border:none;color:#2563eb;padding:0;font-size:0.85rem;text-decoration:underline;cursor:pointer;width:auto;margin-top:10px}
@@ -42,13 +48,14 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:
 tr.row-pending { background-color: #fffbeb; }
 .badge-pending { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; border: 1px solid #fde68a; }
 .badge-settled { background: #f3f4f6; color: #6b7280; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+.receipt-link { font-size: 0.85rem; color: #2563eb; text-decoration: none; font-weight: 600; }
 
 @media(max-width:700px){.grid,.summary,.filter-grid,.monthly-grid{grid-template-columns:1fr}.container{padding:12px}.toolbar{align-items:flex-start;flex-direction:column}.toolbar button{width:100%}}
 </style>
 </head>
 <body>
 
-<!-- VISTA DE LOGIN -->
+<!-- LOGIN -->
 <div id="loginView" class="login card">
   <h1>Gastos comunes</h1>
   <p class="muted">Carlos y Noa · acceso privado</p>
@@ -70,14 +77,11 @@ tr.row-pending { background-color: #fffbeb; }
     <button type="button" id="showForgotBtn" class="link-btn">¿Has olvidado tu contraseña?</button>
   </form>
 
-  <!-- Formulario Recuperación -->
   <form id="forgotForm" class="hidden" style="margin-top:16px; border-top:1px solid #eee; padding-top:12px;">
     <h3>Recuperar contraseña</h3>
     <p class="muted" style="font-size:0.85rem">Introduce tu correo real para recibir el enlace de restablecimiento.</p>
-    
     <label>Email de destino</label>
     <input id="recoveryEmail" type="email" placeholder="ejemplo@gmail.com" required>
-    
     <div class="actions">
       <button type="submit">Enviar enlace</button>
       <button type="button" id="cancelForgotBtn" class="secondary">Cancelar</button>
@@ -85,18 +89,6 @@ tr.row-pending { background-color: #fffbeb; }
   </form>
 
   <div id="loginNotice" class="notice hidden"></div>
-</div>
-
-<!-- VISTA DE RESTABLECIMIENTO (tras hacer clic en el email) -->
-<div id="resetPasswordView" class="login card hidden">
-  <h1>Restablecer Contraseña</h1>
-  <p class="muted">Introduce tu nueva contraseña</p>
-  <form id="resetPasswordForm">
-    <label>Nueva contraseña (mínimo 8 caracteres)</label>
-    <input id="newRecoveryPassword" type="password" minlength="8" required>
-    <button style="margin-top:14px">Guardar nueva contraseña</button>
-  </form>
-  <div id="resetNotice" class="notice hidden"></div>
 </div>
 
 <!-- VISTA PRINCIPAL -->
@@ -117,6 +109,7 @@ tr.row-pending { background-color: #fffbeb; }
     <div id="balance" class="balance">Cargando...</div>
   </section>
 
+  <!-- FORMULARIO GASTOS CON ADJUNTO DE TICKET -->
   <section class="card">
     <h2 id="formTitle">Nuevo gasto</h2>
     <form id="expenseForm">
@@ -128,6 +121,7 @@ tr.row-pending { background-color: #fffbeb; }
         <div><label>Para quién es</label><select id="forWhom"><option>Carlos</option><option>Noa</option><option>Carlos y Noa</option></select></div>
         <div><label>Forma de pago</label><select id="paymentMethod"><option selected>Tarjeta</option><option>Efectivo</option></select></div>
         <div><label>Observaciones</label><input id="notes" maxlength="500" placeholder="Opcional"></div>
+        <div><label>Ticket / Comprobante (Opcional)</label><input id="receiptFile" type="file" accept="image/*,application/pdf"></div>
       </div>
       <div class="actions">
         <button id="saveBtn" type="submit">Añadir gasto</button>
@@ -143,7 +137,7 @@ tr.row-pending { background-color: #fffbeb; }
       <button type="button" class="secondary btn-sm" onclick="toggleSection('settlementBody', this)">Desplegar ▼</button>
     </div>
     <div id="settlementBody" class="hidden" style="margin-top:14px">
-      <p class="muted">Registra el pago que uno hace al otro para igualar las aportaciones. Las liquidaciones no cuentan como gasto de Carlos o Noa.</p>
+      <p class="muted">Registra el pago que uno hace al otro para igualar las aportaciones.</p>
       <div id="settlementSuggestion" class="balance">Cargando saldo...</div>
       <form id="settlementForm" style="margin-top:14px">
         <div class="grid">
@@ -155,69 +149,53 @@ tr.row-pending { background-color: #fffbeb; }
         </div>
         <div class="actions">
           <button id="settlementSave" type="submit">Registrar liquidación</button>
-          <button id="settlementCancel" type="button" class="secondary hidden">Cancelar edición</button>
         </div>
-        <div id="settlementError" class="notice error hidden"></div>
       </form>
     </div>
   </section>
 
   <section class="card">
-    <h2>Resumen histórico por Meses / Años</h2>
-    <div class="monthly-grid">
-      <div><label>Año</label><select id="summaryYear"><option value="ALL">Todos los años</option></select></div>
-      <div>
-        <label>Mes</label>
-        <select id="summaryMonth">
-          <option value="ALL">Todos los meses</option>
-          <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
-          <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
-          <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
-          <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-        </select>
-      </div>
-      <div><label>Quién paga</label><select id="summaryPayer"><option value="ALL">Todos</option><option value="Roberto">Roberto</option><option value="Rocio">Rocio</option></select></div>
-      <div><label>Para quién es</label><select id="summaryForWhom"><option value="ALL">Todos</option><option value="Carlos">Carlos</option><option value="Noa">Noa</option><option value="Carlos y Noa">Carlos y Noa</option></select></div>
-    </div>
-    <div class="summary">
-      <div class="stat"><small>Gastos Filtrados</small><strong id="histTotalExpenses">0,00 €</strong></div>
-      <div class="stat"><small>Liquidaciones Filtradas</small><strong id="histTotalSettlements">0,00 €</strong></div>
-      <div class="stat"><small>Nº Registros Gastos</small><strong id="histCountExpenses">0</strong></div>
-      <div class="stat"><small>Nº Liquidaciones</small><strong id="histCountSettlements">0</strong></div>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>Búsqueda y Filtros de Tablas</h2>
+    <h2>Búsqueda y Filtros</h2>
     <div class="filter-grid">
-      <div><label>Buscar por texto</label><input id="searchInput" type="text" placeholder="Buscar por concepto, notas, pagador..."></div>
+      <div><label>Buscar por texto</label><input id="searchInput" type="text" placeholder="Buscar por concepto, notas..."></div>
       <div><label>Desde fecha</label><input id="filterFromDate" type="date"></div>
       <div><label>Hasta fecha</label><input id="filterToDate" type="date"></div>
     </div>
-    <div class="actions" style="margin-top:10px">
-      <button id="clearFiltersBtn" type="button" class="secondary btn-sm">Limpiar filtros</button>
-    </div>
   </section>
 
+  <!-- TABLA DE GASTOS CON EXPORTACIÓN A CSV -->
   <section class="card">
-    <div class="toolbar"><h2>Gastos registrados</h2><button id="refresh" class="secondary">Actualizar</button></div>
+    <div class="toolbar">
+      <h2>Gastos registrados</h2>
+      <div>
+        <button id="exportExpensesBtn" class="secondary btn-sm">📄 Exportar a CSV</button>
+        <button id="refresh" class="secondary btn-sm">Actualizar</button>
+      </div>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Fecha</th><th>Cantidad</th><th>Paga</th><th>Para</th><th>Pago</th><th>Observaciones</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Cantidad</th><th>Paga</th><th>Para</th><th>Pago</th><th>Observaciones</th><th>Ticket</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
-      <p id="empty" class="muted" style="text-align:center">No hay gastos que coincidan con la búsqueda.</p>
+      <p id="empty" class="muted" style="text-align:center">No hay gastos registrados.</p>
     </div>
   </section>
 
+  <!-- TABLA DE LIQUIDACIONES CON EXPORTACIÓN A CSV -->
   <section class="card">
-    <div class="toolbar"><h2>Liquidaciones registradas</h2><button id="refreshSettlements" class="secondary">Actualizar</button></div>
+    <div class="toolbar">
+      <h2>Liquidaciones registradas</h2>
+      <div>
+        <button id="exportSettlementsBtn" class="secondary btn-sm">📄 Exportar a CSV</button>
+        <button id="refreshSettlements" class="secondary btn-sm">Actualizar</button>
+      </div>
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Fecha</th><th>Cantidad</th><th>Paga</th><th>Recibe</th><th>Observaciones</th><th>Acciones</th></tr></thead>
         <tbody id="settlementRows"></tbody>
       </table>
-      <p id="settlementEmpty" class="muted" style="text-align:center">No hay liquidaciones que coincidan con la búsqueda.</p>
+      <p id="settlementEmpty" class="muted" style="text-align:center">No hay liquidaciones registradas.</p>
     </div>
   </section>
 </div>
@@ -244,89 +222,101 @@ function msg(id,text,isError=true){
   show(id, true); 
 }
 
-// Botón Mostrar / Ocultar Contraseña
+// LOGIN
 $("togglePassword").onclick = () => {
   const pwd = $("password");
   pwd.type = pwd.type === "password" ? "text" : "password";
 };
 
-// Toggle formulario de recuperación
-$("showForgotBtn").onclick = () => show("forgotForm", true);
-$("cancelForgotBtn").onclick = () => show("forgotForm", false);
-
-// Envío de correo de recuperación
-$("forgotForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  const email = $("recoveryEmail").value.trim();
-  const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.href.split('#')[0]
-  });
-
-  if (error) {
-    msg("loginNotice", "Error al enviar el email: " + error.message, true);
-  } else {
-    msg("loginNotice", "Se ha enviado un correo con el enlace para restablecer la contraseña.", false);
-    show("forgotForm", false);
-  }
-});
-
-// Procesar nueva contraseña tras enlace de email
-$("resetPasswordForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  const newPassword = $("newRecoveryPassword").value;
-  const { error } = await sb.auth.updateUser({ password: newPassword });
-
-  if (error) {
-    msg("resetNotice", "Error: " + error.message, true);
-  } else {
-    msg("resetNotice", "Contraseña cambiada con éxito. Redirigiendo al login...", false);
-    setTimeout(() => {
-      show("resetPasswordView", false);
-      show("loginView", true);
-    }, 2000);
-  }
-});
-
-// Inicio de sesión con mapeo explícito de usuarios a correos reales
 $("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
   const userInput = $("username").value.trim();
   const password = $("password").value;
   
-  // Mapeo de nombres del desplegable a los correos reales
   let targetEmail = userInput;
   if (userInput === "Roberto") targetEmail = "robertobyv@gmail.com";
   if (userInput === "Rocio") targetEmail = "rociogarciaw@gmail.com";
 
-  const { error } = await sb.auth.signInWithPassword({
-    email: targetEmail,
-    password: password
-  });
+  const { error } = await sb.auth.signInWithPassword({ email: targetEmail, password });
+  if (error) msg("loginNotice", "Error al acceder: " + error.message, true);
+});
 
-  if (error) {
-    // Muestra el mensaje de error de Supabase en pantalla
-    msg("loginNotice", "Error al acceder: " + error.message, true);
+// AÑADIR / EDITAR GASTO CON TICKET EN SUPABASE STORAGE
+$("expenseForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const id = $("expenseId").value;
+  const fileInput = $("receiptFile");
+  let receiptUrl = null;
+
+  // Subida de imagen al bucket 'receipts' si se adjunta un archivo
+  if (fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+    const { data: uploadData, error: uploadError } = await sb.storage
+      .from('receipts')
+      .upload(fileName, file);
+
+    if (!uploadError) {
+      const { data: urlData } = sb.storage.from('receipts').getPublicUrl(fileName);
+      receiptUrl = urlData.publicUrl;
+    }
+  }
+
+  const payload = {
+    amount: parseFloat($("amount").value),
+    date: $("date").value,
+    payer: $("payer").value,
+    for_whom: $("forWhom").value,
+    payment_method: $("paymentMethod").value,
+    notes: $("notes").value
+  };
+
+  if (receiptUrl) payload.receipt_url = receiptUrl;
+
+  let res;
+  if (id) {
+    res = await sb.from("expenses").update(payload).eq("id", id);
+  } else {
+    res = await sb.from("expenses").insert([payload]);
+  }
+
+  if (res.error) {
+    msg("formError", "Error al guardar el gasto: " + res.error.message, true);
+  } else {
+    $("expenseForm").reset();
+    $("expenseId").value = "";
+    $("date").value = new Date().toISOString().slice(0,10);
+    show("formError", false);
+    await load();
   }
 });
 
-window.toggleSection = function(bodyId, btnElement) {
-  const isHidden = $(bodyId).classList.contains("hidden");
-  show(bodyId, isHidden);
-  btnElement.textContent = isHidden ? "Plegar ▲" : "Desplegar ▼";
-};
-
-function filterRecords(items){
-  const term = $("searchInput").value.toLowerCase().trim();
-  const fromDate = $("filterFromDate").value;
-  const toDate = $("filterToDate").value;
-  return items.filter(x => {
-    if(fromDate && x.date < fromDate) return false;
-    if(toDate && x.date > toDate) return false;
-    if(!term) return true;
-    return (x.notes||"").toLowerCase().includes(term) || (x.payer||"").toLowerCase().includes(term) || (x.for_whom||"").toLowerCase().includes(term);
-  });
+// FUNCIONES DE EXPORTACIÓN A CSV
+function exportToCSV(filename, rows) {
+  const processRow = row => row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(";");
+  const csvContent = "\uFEFF" + rows.map(processRow).join("\r\n");
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
 }
 
+$("exportExpensesBtn").onclick = () => {
+  const headers = ["Fecha", "Cantidad", "Paga", "Para", "Forma Pago", "Observaciones", "Comprobante"];
+  const rows = expenses.map(x => [x.date, x.amount, x.payer, x.for_whom, x.payment_method, x.notes, x.receipt_url || ""]);
+  exportToCSV(`Gastos_Carlos_Noa_${new Date().toISOString().slice(0,10)}.csv`, [headers, ...rows]);
+};
+
+$("exportSettlementsBtn").onclick = () => {
+  const headers = ["Fecha", "Cantidad", "Paga", "Recibe", "Observaciones"];
+  const rows = settlements.map(x => [x.date, x.amount, x.payer, x.receiver, x.notes]);
+  exportToCSV(`Liquidaciones_Carlos_Noa_${new Date().toISOString().slice(0,10)}.csv`, [headers, ...rows]);
+};
+
+// CALCULOS Y RENDERIZADO
 function render(){
   let lastSettlement = settlements.length ? [...settlements].sort((a,b)=> new Date(b.created_at||b.date) - new Date(a.created_at||a.date))[0] : null;
   const lastTime = lastSettlement ? new Date(lastSettlement.created_at || lastSettlement.date).getTime() : 0;
@@ -359,8 +349,8 @@ function render(){
     $("balance").textContent = `Roberto debe abonar a Rocio ${euro(pending)}`;
   }
 
-  const filteredExpenses = filterRecords(expenses);
-  $("rows").innerHTML = filteredExpenses.map(x => {
+  // Render gastos
+  $("rows").innerHTML = expenses.map(x => {
     const isPending = !lastTime || new Date(x.created_at||x.date).getTime() > lastTime;
     return `<tr class="${isPending ? 'row-pending' : ''}">
       <td>${new Date(x.date + "T12:00:00").toLocaleDateString("es-ES")}</td>
@@ -369,6 +359,7 @@ function render(){
       <td>${esc(x.for_whom)}</td>
       <td>${esc(x.payment_method)}</td>
       <td>${esc(x.notes)}</td>
+      <td>${x.receipt_url ? `<a href="${x.receipt_url}" target="_blank" class="receipt-link">📎 Ver ticket</a>` : '-'}</td>
       <td><span class="${isPending ? 'badge-pending' : 'badge-settled'}">${isPending ? 'Sin liquidar' : 'Liquidado'}</span></td>
       <td>
         <button class="secondary btn-sm" onclick="editExpense('${x.id}')">Editar</button>
@@ -376,10 +367,10 @@ function render(){
       </td>
     </tr>`;
   }).join("");
-  show("empty", filteredExpenses.length === 0);
+  show("empty", expenses.length === 0);
 
-  const filteredSettlements = filterRecords(settlements);
-  $("settlementRows").innerHTML = filteredSettlements.map(x => `
+  // Render liquidaciones
+  $("settlementRows").innerHTML = settlements.map(x => `
     <tr>
       <td>${new Date(x.date + "T12:00:00").toLocaleDateString("es-ES")}</td>
       <td>${euro(x.amount)}</td>
@@ -389,7 +380,7 @@ function render(){
       <td><button class="danger btn-sm" onclick="deleteSettlement('${x.id}')">Eliminar</button></td>
     </tr>
   `).join("");
-  show("settlementEmpty", filteredSettlements.length === 0);
+  show("settlementEmpty", settlements.length === 0);
 }
 
 async function load(){
@@ -402,21 +393,20 @@ async function load(){
 
 function boot(){
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === "PASSWORD_RECOVERY") {
+    if (session) {
       show("loginView", false);
-      show("appView", false);
-      show("resetPasswordView", true);
-    } else if (session) {
-      show("loginView", false);
-      show("resetPasswordView", false);
       show("appView", true);
       await load();
     } else {
       show("appView", false);
-      show("resetPasswordView", false);
       show("loginView", true);
     }
   });
+
+  // Registro de Service Worker para PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
 }
 
 $("logout").onclick = () => sb.auth.signOut();
