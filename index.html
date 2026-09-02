@@ -229,6 +229,7 @@ let expenses = [];
 let settlements = [];
 let currentUserEmail = "";
 let currentUserName = "";
+let expenseBeingEdited = null;
 
 const $ = id => document.getElementById(id);
 $("date").value = new Date().toISOString().slice(0,10);
@@ -297,11 +298,50 @@ $("loginForm").addEventListener("submit", async e => {
   }
 });
 
+// RECUPERAR CONTRASEÑA
+$("showForgotBtn").onclick = () => show("forgotForm", true);
+$("cancelForgotBtn").onclick = () => show("forgotForm", false);
+
+$("forgotForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = $("recoveryEmail").value.trim();
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href
+  });
+  if (error) {
+    msg("loginNotice", "Error al solicitar recuperación: " + error.message, true);
+  } else {
+    msg("loginNotice", "Se ha enviado un correo con instrucciones para restablecer la contraseña.", false);
+    show("forgotForm", false);
+  }
+});
+
 // DESPLEGAR SECCIÓN LIQUIDAR
 $("toggleSettlementBtn").onclick = function() {
   const isHidden = $("settlementBody").classList.contains("hidden");
   show("settlementBody", isHidden);
   this.textContent = isHidden ? "Plegar ▲" : "Desplegar ▼";
+};
+
+// EDITAR GASTO
+window.editExpense = function(id) {
+  const item = expenses.find(x => String(x.id) === String(id));
+  if (!item) return;
+
+  expenseBeingEdited = JSON.parse(JSON.stringify(item));
+
+  $("expenseId").value = item.id;
+  $("amount").value = item.amount;
+  $("date").value = item.date;
+  $("payer").value = item.payer;
+  $("forWhom").value = item.for_whom;
+  $("paymentMethod").value = item.payment_method;
+  $("notes").value = item.notes || "";
+
+  $("formTitle").textContent = "Editar gasto";
+  $("saveBtn").textContent = "Guardar cambios";
+  show("cancelEdit", true);
+  window.scrollTo({ top: $("expenseForm").offsetTop - 20, behavior: "smooth" });
 };
 
 // FORMULARIO GASTOS (AÑADIR / EDITAR)
@@ -327,15 +367,18 @@ $("expenseForm").addEventListener("submit", async e => {
   }
 
   const amountVal = parseFloat($("amount").value);
+  const dateVal = $("date").value;
   const payerVal = $("payer").value;
+  const forWhomVal = $("forWhom").value;
+  const paymentMethodVal = $("paymentMethod").value;
   const notesVal = $("notes").value;
 
   const payload = {
     amount: amountVal,
-    date: $("date").value,
+    date: dateVal,
     payer: payerVal,
-    for_whom: $("forWhom").value,
-    payment_method: $("paymentMethod").value,
+    for_whom: forWhomVal,
+    payment_method: paymentMethodVal,
     notes: notesVal
   };
 
@@ -344,10 +387,42 @@ $("expenseForm").addEventListener("submit", async e => {
   let res;
   if (id) {
     res = await sb.from("expenses").update(payload).eq("id", id);
-    if (!res.error) await logActivity("Modificación de gasto", `Editó gasto #${id} por ${euro(amountVal)} (${payerVal}). Obs: ${notesVal}`);
+    
+    if (!res.error) {
+      const formatDate = (dStr) => {
+        if (!dStr) return "N/A";
+        const [y, m, d] = dStr.split("-");
+        return `${d}/${m}/${y.slice(-2)}`;
+      };
+
+      const old = expenseBeingEdited || {};
+      let changes = [];
+
+      if (old.date !== dateVal) changes.push(`de fecha ${formatDate(old.date)} a fecha ${formatDate(dateVal)}`);
+      if (Number(old.amount) !== amountVal) changes.push(`de ${euro(old.amount)} a ${euro(amountVal)}`);
+      if (old.payer !== payerVal) changes.push(`paga ${old.payer} a ${payerVal}`);
+      if (old.for_whom !== forWhomVal) changes.push(`para ${old.for_whom} a ${forWhomVal}`);
+      if (old.payment_method !== paymentMethodVal) changes.push(`pago ${old.payment_method} a ${paymentMethodVal}`);
+      if ((old.notes || '') !== notesVal) changes.push(`Obs: ${old.notes || 'sin obs'} a ${notesVal || 'sin obs'}`);
+      
+      if (receiptUrl) {
+        changes.push("añade un ticket");
+      } else if (old.receipt_url) {
+        changes.push("mantiene ticket existente");
+      }
+
+      const detailsText = changes.length > 0 
+        ? `Editó gasto ${changes.join(", ")}`
+        : `Editó gasto #${id} (sin cambios significativos)`;
+
+      await logActivity("Modificación de gasto", detailsText);
+    }
   } else {
     res = await sb.from("expenses").insert([payload]);
-    if (!res.error) await logActivity("Nuevo gasto", `Añadió gasto por ${euro(amountVal)} (${payerVal}). Obs: ${notesVal}`);
+    if (!res.error) {
+      const ticketText = receiptUrl ? " con ticket" : "";
+      await logActivity("Nuevo gasto", `Añadió gasto por ${euro(amountVal)} (${payerVal}) para ${forWhomVal}. Obs: ${notesVal || 'sin obs'}${ticketText}`);
+    }
   }
 
   if (res.error) {
@@ -364,31 +439,14 @@ function resetExpenseForm(){
   $("date").value = new Date().toISOString().slice(0,10);
   $("formTitle").textContent = "Nuevo gasto";
   $("saveBtn").textContent = "Añadir gasto";
+  expenseBeingEdited = null;
   show("cancelEdit", false);
   show("formError", false);
 }
 
 $("cancelEdit").onclick = resetExpenseForm;
 
-// EDITAR Y ELIMINAR GASTO
-window.editExpense = function(id) {
-  const item = expenses.find(x => String(x.id) === String(id));
-  if (!item) return;
-
-  $("expenseId").value = item.id;
-  $("amount").value = item.amount;
-  $("date").value = item.date;
-  $("payer").value = item.payer;
-  $("forWhom").value = item.for_whom;
-  $("paymentMethod").value = item.payment_method;
-  $("notes").value = item.notes || "";
-
-  $("formTitle").textContent = "Editar gasto";
-  $("saveBtn").textContent = "Guardar cambios";
-  show("cancelEdit", true);
-  window.scrollTo({ top: $("expenseForm").offsetTop - 20, behavior: "smooth" });
-};
-
+// ELIMINAR GASTO
 window.deleteExpense = async function(id) {
   const item = expenses.find(x => String(x.id) === String(id));
   if (!confirm("¿Seguro que deseas eliminar este gasto?")) return;
