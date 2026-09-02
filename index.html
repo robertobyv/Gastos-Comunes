@@ -202,6 +202,22 @@ tr.row-pending { background-color: #fffbeb; }
       <p id="settlementEmpty" class="muted" style="text-align:center">No hay liquidaciones registradas.</p>
     </div>
   </section>
+
+  <!-- LOG DE AUDITORÍA (SOLO VISIBLE PARA ROBERTO) -->
+  <section id="auditLogSection" class="card hidden">
+    <div class="toolbar">
+      <h2>📜 Historial de Actividad (Auditoría)</h2>
+      <button id="refreshLogs" class="secondary btn-sm">Actualizar Log</button>
+    </div>
+    <p class="muted" style="font-size:0.85rem">Historial exclusivo para administración. Muestra accesos, creaciones, modificaciones y eliminaciones.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha / Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead>
+        <tbody id="logRows"></tbody>
+      </table>
+      <p id="logsEmpty" class="muted" style="text-align:center">No hay registros de actividad.</p>
+    </div>
+  </section>
 </div>
 
 <script>
@@ -211,6 +227,8 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let expenses = [];
 let settlements = [];
+let currentUserEmail = "";
+let currentUserName = "";
 
 const $ = id => document.getElementById(id);
 $("date").value = new Date().toISOString().slice(0,10);
@@ -224,6 +242,35 @@ function msg(id,text,isError=true){
   el.textContent = text; 
   el.className = `notice ${isError ? 'error' : 'success'}`;
   show(id, true); 
+}
+
+// REGISTRO DE AUDITORÍA (LOGS)
+async function logActivity(action, details) {
+  try {
+    await sb.from("activity_logs").insert([{
+      user_name: currentUserName || "Desconocido",
+      action: action,
+      details: details
+    }]);
+  } catch(e){
+    console.error("Error al guardar log:", e);
+  }
+}
+
+async function loadAuditLogs(){
+  if (currentUserName !== "Roberto") return;
+  const { data, error } = await sb.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(100);
+  if (!error && data) {
+    $("logRows").innerHTML = data.map(l => `
+      <tr>
+        <td>${new Date(l.created_at).toLocaleString("es-ES")}</td>
+        <td><strong>${esc(l.user_name)}</strong></td>
+        <td>${esc(l.action)}</td>
+        <td>${esc(l.details)}</td>
+      </tr>
+    `).join("");
+    show("logsEmpty", data.length === 0);
+  }
 }
 
 // LOGIN
@@ -242,7 +289,12 @@ $("loginForm").addEventListener("submit", async e => {
   if (userInput === "Rocio") targetEmail = "rociogarciaw@gmail.com";
 
   const { error } = await sb.auth.signInWithPassword({ email: targetEmail, password });
-  if (error) msg("loginNotice", "Error al acceder: " + error.message, true);
+  if (error) {
+    msg("loginNotice", "Error al acceder: " + error.message, true);
+  } else {
+    currentUserName = userInput;
+    await logActivity("Inicio de sesión", "Acceso concedido a la aplicación");
+  }
 });
 
 // DESPLEGAR SECCIÓN LIQUIDAR
@@ -274,13 +326,17 @@ $("expenseForm").addEventListener("submit", async e => {
     }
   }
 
+  const amountVal = parseFloat($("amount").value);
+  const payerVal = $("payer").value;
+  const notesVal = $("notes").value;
+
   const payload = {
-    amount: parseFloat($("amount").value),
+    amount: amountVal,
     date: $("date").value,
-    payer: $("payer").value,
+    payer: payerVal,
     for_whom: $("forWhom").value,
     payment_method: $("paymentMethod").value,
-    notes: $("notes").value
+    notes: notesVal
   };
 
   if (receiptUrl) payload.receipt_url = receiptUrl;
@@ -288,8 +344,10 @@ $("expenseForm").addEventListener("submit", async e => {
   let res;
   if (id) {
     res = await sb.from("expenses").update(payload).eq("id", id);
+    if (!res.error) await logActivity("Modificación de gasto", `Editó gasto #${id} por ${euro(amountVal)} (${payerVal}). Obs: ${notesVal}`);
   } else {
     res = await sb.from("expenses").insert([payload]);
+    if (!res.error) await logActivity("Nuevo gasto", `Añadió gasto por ${euro(amountVal)} (${payerVal}). Obs: ${notesVal}`);
   }
 
   if (res.error) {
@@ -332,19 +390,28 @@ window.editExpense = function(id) {
 };
 
 window.deleteExpense = async function(id) {
+  const item = expenses.find(x => String(x.id) === String(id));
   if (!confirm("¿Seguro que deseas eliminar este gasto?")) return;
   const { error } = await sb.from("expenses").delete().eq("id", id);
-  if (error) alert("Error al eliminar: " + error.message);
-  else await load();
+  if (error) {
+    alert("Error al eliminar: " + error.message);
+  } else {
+    await logActivity("Eliminación de gasto", `Eliminó gasto por ${euro(item?.amount||0)} de ${item?.payer||'N/A'}. Obs: ${item?.notes||''}`);
+    await load();
+  }
 };
 
 // FORMULARIO LIQUIDACIÓN
 $("settlementForm").addEventListener("submit", async e => {
   e.preventDefault();
+  const amt = parseFloat($("settlementAmount").value);
+  const p = $("settlementPayer").value;
+  const r = $("settlementReceiver").value;
+
   const payload = {
-    payer: $("settlementPayer").value,
-    receiver: $("settlementReceiver").value,
-    amount: parseFloat($("settlementAmount").value),
+    payer: p,
+    receiver: r,
+    amount: amt,
     date: $("settlementDate").value,
     notes: $("settlementNotes").value
   };
@@ -353,6 +420,7 @@ $("settlementForm").addEventListener("submit", async e => {
   if (error) {
     msg("settlementError", "Error al guardar liquidación: " + error.message, true);
   } else {
+    await logActivity("Nueva liquidación", `Registró pago de ${euro(amt)} (${p} -> ${r})`);
     $("settlementForm").reset();
     $("settlementDate").value = new Date().toISOString().slice(0,10);
     show("settlementError", false);
@@ -361,10 +429,15 @@ $("settlementForm").addEventListener("submit", async e => {
 });
 
 window.deleteSettlement = async function(id) {
+  const item = settlements.find(x => String(x.id) === String(id));
   if (!confirm("¿Seguro que deseas eliminar esta liquidación?")) return;
   const { error } = await sb.from("settlements").delete().eq("id", id);
-  if (error) alert("Error al eliminar: " + error.message);
-  else await load();
+  if (error) {
+    alert("Error al eliminar: " + error.message);
+  } else {
+    await logActivity("Eliminación de liquidación", `Eliminó liquidación por ${euro(item?.amount||0)} (${item?.payer} -> ${item?.receiver})`);
+    await load();
+  }
 };
 
 // EXPORTACIÓN CSV
@@ -450,7 +523,7 @@ function render(){
     $("balance").textContent = `Roberto debe abonar a Rocio ${euro(pending)}`;
   }
 
-  // Render gastos filtrados
+  // Render gastos
   const filteredExpenses = filterRecords(expenses);
   $("rows").innerHTML = filteredExpenses.map(x => {
     const isPending = !lastTime || new Date(x.created_at||x.date).getTime() > lastTime;
@@ -471,7 +544,7 @@ function render(){
   }).join("");
   show("empty", filteredExpenses.length === 0);
 
-  // Render liquidaciones filtradas
+  // Render liquidaciones
   const filteredSettlements = filterRecords(settlements);
   $("settlementRows").innerHTML = filteredSettlements.map(x => `
     <tr>
@@ -492,11 +565,19 @@ async function load(){
   expenses = eData || [];
   settlements = sData || [];
   render();
+  if (currentUserName === "Roberto") {
+    show("auditLogSection", true);
+    await loadAuditLogs();
+  } else {
+    show("auditLogSection", false);
+  }
 }
 
 function boot(){
   sb.auth.onAuthStateChange(async (event, session) => {
     if (session) {
+      currentUserEmail = session.user.email;
+      currentUserName = currentUserEmail.includes("robertobyv") ? "Roberto" : "Rocio";
       show("loginView", false);
       show("appView", true);
       await load();
@@ -514,6 +595,7 @@ function boot(){
 $("logout").onclick = () => sb.auth.signOut();
 $("refresh").onclick = () => load();
 $("refreshSettlements").onclick = () => load();
+$("refreshLogs").onclick = () => loadAuditLogs();
 
 boot();
 </script>
