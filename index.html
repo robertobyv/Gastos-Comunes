@@ -49,7 +49,24 @@ tr.row-pending { background-color: #fffbeb; }
 .badge-settled { background: #f3f4f6; color: #6b7280; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
 .receipt-link { font-size: 0.85rem; color: #2563eb; text-decoration: none; font-weight: 600; }
 
-@media(max-width:700px){.grid,.summary,.filter-grid{grid-template-columns:1fr}.container{padding:12px}.toolbar{align-items:flex-start;flex-direction:column}.toolbar button{width:100%}}
+/* Estilo para la etiqueta del usuario conectado */
+.user-badge {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+}
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@media(max-width:700px){.grid,.summary,.filter-grid{grid-template-columns:1fr}.container{padding:12px}.toolbar{align-items:flex-start;flex-direction:column}.toolbar button{width:100%}.user-actions{width:100%;justify-content:space-between}}
 </style>
 </head>
 <body>
@@ -94,7 +111,10 @@ tr.row-pending { background-color: #fffbeb; }
 <div id="appView" class="container hidden">
   <div class="toolbar">
     <div><h1>Gastos comunes · Carlos y Noa</h1><div class="muted">Datos compartidos online</div></div>
-    <button id="logout" class="secondary">Cerrar sesión</button>
+    <div class="user-actions">
+      <span id="userBadge" class="user-badge">👤 Carga...</span>
+      <button id="logout" class="secondary">Cerrar sesión</button>
+    </div>
   </div>
 
   <section class="card">
@@ -126,7 +146,7 @@ tr.row-pending { background-color: #fffbeb; }
         <button id="saveBtn" type="submit">Añadir gasto</button>
         <button id="cancelEdit" type="button" class="secondary hidden">Cancelar edición</button>
       </div>
-      <div id="formError" class="notice error hidden"></div>
+      <div id="formError" class="notice hidden"></div>
     </form>
   </section>
 
@@ -149,7 +169,7 @@ tr.row-pending { background-color: #fffbeb; }
         <div class="actions">
           <button id="settlementSave" type="submit">Registrar liquidación</button>
         </div>
-        <div id="settlementError" class="notice error hidden"></div>
+        <div id="settlementError" class="notice hidden"></div>
       </form>
     </div>
   </section>
@@ -239,11 +259,18 @@ $("settlementDate").value = new Date().toISOString().slice(0,10);
 function euro(n){ return Number(n).toLocaleString("es-ES",{style:"currency",currency:"EUR"}); }
 function esc(s){ return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
 function show(id,on=true){ $(id).classList.toggle("hidden",!on); }
-function msg(id,text,isError=true){ 
+
+function msg(id, text, isError = true, autoHideMs = 4000) { 
   const el = $(id);
   el.textContent = text; 
   el.className = `notice ${isError ? 'error' : 'success'}`;
   show(id, true); 
+  
+  if (autoHideMs > 0) {
+    setTimeout(() => {
+      show(id, false);
+    }, autoHideMs);
+  }
 }
 
 // COMPROBACIÓN DE PERMISOS DE ELIMINACIÓN
@@ -302,6 +329,7 @@ $("loginForm").addEventListener("submit", async e => {
   } else {
     currentUserName = userInput;
     currentUserId = data.user.id;
+    $("userBadge").textContent = `👤 Usuario: ${currentUserName}`;
     await logActivity("Inicio de sesión", "Acceso concedido a la aplicación");
   }
 });
@@ -393,7 +421,9 @@ $("expenseForm").addEventListener("submit", async e => {
   if (receiptUrl) payload.receipt_url = receiptUrl;
 
   let res;
-  if (id) {
+  const isEditing = Boolean(id);
+
+  if (isEditing) {
     res = await sb.from("expenses").update(payload).eq("id", id);
     
     if (!res.error) {
@@ -443,7 +473,9 @@ $("expenseForm").addEventListener("submit", async e => {
   if (res.error) {
     msg("formError", "Error al guardar el gasto: " + res.error.message, true);
   } else {
+    const successMsg = isEditing ? "Gasto modificado correctamente" : "Gasto añadido correctamente";
     resetExpenseForm();
+    msg("formError", successMsg, false, 4000);
     await load();
   }
 });
@@ -456,7 +488,6 @@ function resetExpenseForm(){
   $("saveBtn").textContent = "Añadir gasto";
   expenseBeingEdited = null;
   show("cancelEdit", false);
-  show("formError", false);
 }
 
 $("cancelEdit").onclick = resetExpenseForm;
@@ -504,7 +535,7 @@ $("settlementForm").addEventListener("submit", async e => {
     await logActivity("Nueva liquidación", `Registró pago de ${euro(amt)} (${p} -> ${r})`);
     $("settlementForm").reset();
     $("settlementDate").value = new Date().toISOString().slice(0,10);
-    show("settlementError", false);
+    msg("settlementError", "Liquidación añadida correctamente", false, 4000);
     await load();
   }
 });
@@ -687,6 +718,9 @@ function boot(){
       currentUserEmail = session.user.email;
       currentUserId = session.user.id;
       currentUserName = currentUserEmail.includes("robertobyv") ? "Roberto" : "Rocio";
+      
+      $("userBadge").textContent = `👤 Usuario: ${currentUserName}`;
+      
       show("loginView", false);
       show("appView", true);
       await load();
