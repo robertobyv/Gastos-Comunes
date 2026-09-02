@@ -36,9 +36,10 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:
 .btn-sm{padding:5px 10px;font-size:0.85rem}
 .filter-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-top:12px}
 
-.collapsible-header{display:flex;justify-content:space-between;align-items:center}
+.collapsible-header{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .collapsible-header h2{margin:0}
 .collapsible-header button{width:auto;padding:6px 14px;font-size:0.85rem}
+.header-actions{display:flex;gap:8px;align-items:center}
 
 .password-wrapper{display:flex;gap:6px}
 .password-wrapper button{width:auto;padding:0 14px;background:#e5e7eb;color:#374151}
@@ -49,7 +50,6 @@ tr.row-pending { background-color: #fffbeb; }
 .badge-settled { background: #f3f4f6; color: #6b7280; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
 .receipt-link { font-size: 0.85rem; color: #2563eb; text-decoration: none; font-weight: 600; }
 
-/* Estilo para la etiqueta del usuario conectado */
 .user-badge {
   background: #e0e7ff;
   color: #3730a3;
@@ -117,44 +117,55 @@ tr.row-pending { background-color: #fffbeb; }
     </div>
   </div>
 
+  <!-- RESUMEN -->
   <section class="card">
-    <h2>Resumen ciclo actual</h2>
-    <div class="summary">
-      <div class="stat"><small>Total gastos Roberto</small><strong id="totalRoberto">0,00 €</strong></div>
-      <div class="stat"><small>Total gastos Rocio</small><strong id="totalRocio">0,00 €</strong></div>
-      <div class="stat"><small>Diferencia de gastos</small><strong id="difference">0,00 €</strong></div>
-      <div class="stat"><small>Saldo pendiente</small><strong id="pendingBalance">0,00 €</strong></div>
+    <div class="collapsible-header">
+      <h2>Resumen ciclo actual</h2>
+      <button type="button" class="secondary btn-sm" onclick="toggleSection('summaryBody', this)">Plegar ▲</button>
     </div>
-    <div id="balance" class="balance">Cargando...</div>
+    <div id="summaryBody" style="margin-top:14px">
+      <div class="summary">
+        <div class="stat"><small>Total gastos Roberto</small><strong id="totalRoberto">0,00 €</strong></div>
+        <div class="stat"><small>Total gastos Rocio</small><strong id="totalRocio">0,00 €</strong></div>
+        <div class="stat"><small>Diferencia de gastos</small><strong id="difference">0,00 €</strong></div>
+        <div class="stat"><small>Saldo pendiente</small><strong id="pendingBalance">0,00 €</strong></div>
+      </div>
+      <div id="balance" class="balance">Cargando...</div>
+    </div>
   </section>
 
   <!-- FORMULARIO GASTOS -->
   <section class="card">
-    <h2 id="formTitle">Nuevo gasto</h2>
-    <form id="expenseForm">
-      <input id="expenseId" type="hidden">
-      <div class="grid">
-        <div><label>Cantidad (€)</label><input id="amount" type="number" min=".01" step=".01" required></div>
-        <div><label>Fecha</label><input id="date" type="date" required></div>
-        <div><label>Quién paga</label><select id="payer"><option>Roberto</option><option>Rocio</option></select></div>
-        <div><label>Para quién es</label><select id="forWhom"><option>Carlos</option><option>Noa</option><option>Carlos y Noa</option></select></div>
-        <div><label>Forma de pago</label><select id="paymentMethod"><option selected>Tarjeta</option><option>Efectivo</option></select></div>
-        <div><label>Observaciones</label><input id="notes" maxlength="500" placeholder="Opcional"></div>
-        <div><label>Ticket / Comprobante (Opcional)</label><input id="receiptFile" type="file" accept="image/*,application/pdf"></div>
-      </div>
-      <div class="actions">
-        <button id="saveBtn" type="submit">Añadir gasto</button>
-        <button id="cancelEdit" type="button" class="secondary hidden">Cancelar edición</button>
-      </div>
-      <div id="formError" class="notice hidden"></div>
-    </form>
+    <div class="collapsible-header">
+      <h2 id="formTitle">Nuevo gasto</h2>
+      <button type="button" class="secondary btn-sm" onclick="toggleSection('expenseFormBody', this)">Plegar ▲</button>
+    </div>
+    <div id="expenseFormBody" style="margin-top:14px">
+      <form id="expenseForm">
+        <input id="expenseId" type="hidden">
+        <div class="grid">
+          <div><label>Cantidad (€)</label><input id="amount" type="number" min=".01" step=".01" required></div>
+          <div><label>Fecha</label><input id="date" type="date" required></div>
+          <div><label>Quién paga</label><select id="payer"><option>Roberto</option><option>Rocio</option></select></div>
+          <div><label>Para quién es</label><select id="forWhom"><option>Carlos</option><option>Noa</option><option>Carlos y Noa</option></select></div>
+          <div><label>Forma de pago</label><select id="paymentMethod"><option selected>Tarjeta</option><option>Efectivo</option></select></div>
+          <div><label>Observaciones</label><input id="notes" maxlength="500" placeholder="Opcional"></div>
+          <div><label>Ticket / Comprobante (Opcional)</label><input id="receiptFile" type="file" accept="image/*,application/pdf"></div>
+        </div>
+        <div class="actions">
+          <button id="saveBtn" type="submit">Añadir gasto</button>
+          <button id="cancelEdit" type="button" class="secondary hidden">Cancelar edición</button>
+        </div>
+        <div id="formError" class="notice hidden"></div>
+      </form>
+    </div>
   </section>
 
   <!-- LIQUIDAR CUENTAS -->
   <section class="card">
     <div class="collapsible-header">
       <h2>Liquidar cuentas</h2>
-      <button type="button" class="secondary btn-sm" id="toggleSettlementBtn">Desplegar ▼</button>
+      <button type="button" class="secondary btn-sm" onclick="toggleSection('settlementBody', this)">Desplegar ▼</button>
     </div>
     <div id="settlementBody" class="hidden" style="margin-top:14px">
       <p class="muted">Registra el pago que uno hace al otro para igualar las aportaciones.</p>
@@ -176,66 +187,122 @@ tr.row-pending { background-color: #fffbeb; }
 
   <!-- FILTROS Y BÚSQUEDA -->
   <section class="card">
-    <h2>Búsqueda y Filtros</h2>
-    <div class="filter-grid">
-      <div><label>Buscar por texto</label><input id="searchInput" type="text" placeholder="Buscar por concepto, notas, pagador..."></div>
-      <div><label>Desde fecha</label><input id="filterFromDate" type="date"></div>
-      <div><label>Hasta fecha</label><input id="filterToDate" type="date"></div>
+    <div class="collapsible-header">
+      <h2>Búsqueda y Filtros</h2>
+      <button type="button" class="secondary btn-sm" onclick="toggleSection('filterBody', this)">Plegar ▲</button>
     </div>
-    <div class="actions" style="margin-top:10px">
-      <button id="clearFiltersBtn" type="button" class="secondary btn-sm">Limpiar filtros</button>
+    <div id="filterBody" style="margin-top:14px">
+      <div class="filter-grid">
+        <div><label>Buscar por texto</label><input id="searchInput" type="text" placeholder="Buscar por concepto, notas, pagador..."></div>
+        <div><label>Desde fecha</label><input id="filterFromDate" type="date"></div>
+        <div><label>Hasta fecha</label><input id="filterToDate" type="date"></div>
+      </div>
+      <div class="actions" style="margin-top:10px">
+        <button id="clearFiltersBtn" type="button" class="secondary btn-sm">Limpiar filtros</button>
+      </div>
     </div>
   </section>
 
   <!-- TABLA DE GASTOS -->
   <section class="card">
-    <div class="toolbar">
+    <div class="collapsible-header">
       <h2>Gastos registrados</h2>
-      <div>
-        <button id="exportExpensesBtn" class="secondary btn-sm">📄 Exportar a CSV</button>
+      <div class="header-actions">
+        <button id="exportExpensesBtn" class="secondary btn-sm">📄 CSV</button>
         <button id="refresh" class="secondary btn-sm">Actualizar</button>
+        <button type="button" class="secondary btn-sm" onclick="toggleSection('expensesBody', this)">Plegar ▲</button>
       </div>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Fecha</th><th>Cantidad</th><th>Paga</th><th>Para</th><th>Pago</th><th>Observaciones</th><th>Ticket</th><th>Estado</th><th>Acciones</th></tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
-      <p id="empty" class="muted" style="text-align:center">No hay gastos registrados.</p>
+    <div id="expensesBody" style="margin-top:14px">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Cantidad</th><th>Paga</th><th>Para</th><th>Pago</th><th>Observaciones</th><th>Ticket</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <p id="empty" class="muted" style="text-align:center">No hay gastos registrados.</p>
+      </div>
     </div>
   </section>
 
   <!-- TABLA DE LIQUIDACIONES -->
   <section class="card">
-    <div class="toolbar">
+    <div class="collapsible-header">
       <h2>Liquidaciones registradas</h2>
-      <div>
-        <button id="exportSettlementsBtn" class="secondary btn-sm">📄 Exportar a CSV</button>
+      <div class="header-actions">
+        <button id="exportSettlementsBtn" class="secondary btn-sm">📄 CSV</button>
         <button id="refreshSettlements" class="secondary btn-sm">Actualizar</button>
+        <button type="button" class="secondary btn-sm" onclick="toggleSection('settlementsBody', this)">Plegar ▲</button>
       </div>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Fecha</th><th>Cantidad</th><th>Paga</th><th>Recibe</th><th>Observaciones</th><th>Acciones</th></tr></thead>
-        <tbody id="settlementRows"></tbody>
-      </table>
-      <p id="settlementEmpty" class="muted" style="text-align:center">No hay liquidaciones registradas.</p>
+    <div id="settlementsBody" style="margin-top:14px">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Cantidad</th><th>Paga</th><th>Recibe</th><th>Observaciones</th><th>Acciones</th></tr></thead>
+          <tbody id="settlementRows"></tbody>
+        </table>
+        <p id="settlementEmpty" class="muted" style="text-align:center">No hay liquidaciones registradas.</p>
+      </div>
     </div>
   </section>
 
-  <!-- LOG DE AUDITORÍA (SOLO VISIBLE PARA ROBERTO) -->
-  <section id="auditLogSection" class="card hidden">
-    <div class="toolbar">
-      <h2>📜 Historial de Actividad (Auditoría)</h2>
-      <button id="refreshLogs" class="secondary btn-sm">Actualizar Log</button>
+  <!-- SEGURIDAD Y CAMBIO DE CONTRASEÑA (SOLO ROBERTO) -->
+  <section id="securitySection" class="card hidden">
+    <div class="collapsible-header">
+      <h2>🔒 Gestión de Seguridad y Usuarios</h2>
+      <button type="button" class="secondary btn-sm" onclick="toggleSection('securityBody', this)">Desplegar ▼</button>
     </div>
-    <p class="muted" style="font-size:0.85rem">Historial exclusivo para administración. Muestra accesos, creaciones, modificaciones y eliminaciones.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Fecha / Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead>
-        <tbody id="logRows"></tbody>
-      </table>
-      <p id="logsEmpty" class="muted" style="text-align:center">No hay registros de actividad.</p>
+    <div id="securityBody" class="hidden" style="margin-top:14px">
+      <p class="muted" style="font-size:0.85rem">Panel exclusivo para administración. Cambia la contraseña de acceso de cualquiera de los usuarios registrados.</p>
+      <form id="changePasswordForm" style="margin-top:14px">
+        <div class="grid">
+          <div style="grid-column: span 2;">
+            <label>Seleccionar Usuario</label>
+            <select id="targetUserSec" required>
+              <option value="Roberto">Roberto</option>
+              <option value="Rocio">Rocio</option>
+            </select>
+          </div>
+          <div>
+            <label>Nueva Contraseña</label>
+            <div class="password-wrapper">
+              <input id="newPasswordSec" type="password" minlength="6" placeholder="Mínimo 6 caracteres" required autocomplete="new-password">
+              <button type="button" id="toggleNewSec">👁️</button>
+            </div>
+          </div>
+          <div>
+            <label>Confirmar Contraseña</label>
+            <div class="password-wrapper">
+              <input id="confirmPasswordSec" type="password" minlength="6" placeholder="Repite la contraseña" required autocomplete="new-password">
+              <button type="button" id="toggleConfirmSec">👁️</button>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="submit">Actualizar Contraseña</button>
+        </div>
+        <div id="secNotice" class="notice hidden"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- LOG DE AUDITORÍA (SOLO ROBERTO) -->
+  <section id="auditLogSection" class="card hidden">
+    <div class="collapsible-header">
+      <h2>📜 Historial de Actividad (Auditoría)</h2>
+      <div class="header-actions">
+        <button id="refreshLogs" class="secondary btn-sm">Actualizar Log</button>
+        <button type="button" class="secondary btn-sm" onclick="toggleSection('logsBody', this)">Desplegar ▼</button>
+      </div>
+    </div>
+    <div id="logsBody" class="hidden" style="margin-top:14px">
+      <p class="muted" style="font-size:0.85rem">Historial exclusivo para administración. Muestra accesos, creaciones, modificaciones y eliminaciones.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fecha / Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead>
+          <tbody id="logRows"></tbody>
+        </table>
+        <p id="logsEmpty" class="muted" style="text-align:center">No hay registros de actividad.</p>
+      </div>
     </div>
   </section>
 </div>
@@ -260,6 +327,14 @@ function euro(n){ return Number(n).toLocaleString("es-ES",{style:"currency",curr
 function esc(s){ return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
 function show(id,on=true){ $(id).classList.toggle("hidden",!on); }
 
+// FUNCIÓN GENÉRICA PARA PLEGAR / DESPLEGAR
+window.toggleSection = function(bodyId, btn) {
+  const body = $(bodyId);
+  const isHidden = body.classList.contains("hidden");
+  show(bodyId, isHidden);
+  btn.textContent = isHidden ? "Plegar ▲" : "Desplegar ▼";
+};
+
 function msg(id, text, isError = true, autoHideMs = 4000) { 
   const el = $(id);
   el.textContent = text; 
@@ -273,13 +348,13 @@ function msg(id, text, isError = true, autoHideMs = 4000) {
   }
 }
 
-// COMPROBACIÓN DE PERMISOS DE ELIMINACIÓN
+// PERMISOS DE ELIMINACIÓN
 function canDeleteRecord(createdBy) {
   if (currentUserName === "Roberto") return true;
   return createdBy && createdBy === currentUserId;
 }
 
-// REGISTRO DE AUDITORÍA (LOGS)
+// REGISTRO DE AUDITORÍA
 async function logActivity(action, details) {
   try {
     await sb.from("activity_logs").insert([{
@@ -308,9 +383,19 @@ async function loadAuditLogs(){
   }
 }
 
-// LOGIN
+// LOGIN & VISIBILIDAD DE CONTRASEÑA
 $("togglePassword").onclick = () => {
   const pwd = $("password");
+  pwd.type = pwd.type === "password" ? "text" : "password";
+};
+
+$("toggleNewSec").onclick = () => {
+  const pwd = $("newPasswordSec");
+  pwd.type = pwd.type === "password" ? "text" : "password";
+};
+
+$("toggleConfirmSec").onclick = () => {
+  const pwd = $("confirmPasswordSec");
   pwd.type = pwd.type === "password" ? "text" : "password";
 };
 
@@ -352,17 +437,58 @@ $("forgotForm").addEventListener("submit", async e => {
   }
 });
 
-// DESPLEGAR SECCIÓN LIQUIDAR
-$("toggleSettlementBtn").onclick = function() {
-  const isHidden = $("settlementBody").classList.contains("hidden");
-  show("settlementBody", isHidden);
-  this.textContent = isHidden ? "Plegar ▲" : "Desplegar ▼";
-};
+// CAMBIO DE CONTRASEÑA CON CONFIRMACIÓN (PANEL DE SEGURIDAD PARA ROBERTO)
+$("changePasswordForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const targetUser = $("targetUserSec").value;
+  const newPassword = $("newPasswordSec").value;
+  const confirmPassword = $("confirmPasswordSec").value;
+
+  if (newPassword.length < 6) {
+    msg("secNotice", "La contraseña debe tener al menos 6 caracteres.", true);
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    msg("secNotice", "Las contraseñas introducidas no coinciden.", true);
+    return;
+  }
+
+  // Si Roberto cambia su propia contraseña de la sesión activa
+  if (targetUser === "Roberto") {
+    const { error } = await sb.auth.updateUser({ password: newPassword });
+    if (error) {
+      msg("secNotice", "Error al actualizar contraseña: " + error.message, true);
+    } else {
+      msg("secNotice", "Contraseña de Roberto actualizada correctamente.", false);
+      $("changePasswordForm").reset();
+      await logActivity("Cambio de contraseña", "Roberto actualizó su propia contraseña de acceso.");
+    }
+  } else {
+    // Para Rocio se envía el enlace de restablecimiento de contraseña por email
+    const targetEmail = "rociogarciaw@gmail.com";
+    const { error } = await sb.auth.resetPasswordForEmail(targetEmail);
+    if (error) {
+      msg("secNotice", "Error al procesar cambio para Rocio: " + error.message, true);
+    } else {
+      msg("secNotice", "Enlace de restablecimiento enviado a Rocio para actualizar su clave.", false);
+      $("changePasswordForm").reset();
+      await logActivity("Cambio de contraseña", "Roberto solicitó el restablecimiento de clave para Rocio.");
+    }
+  }
+});
 
 // EDITAR GASTO
 window.editExpense = function(id) {
   const item = expenses.find(x => String(x.id) === String(id));
   if (!item) return;
+
+  const formBody = $("expenseFormBody");
+  if (formBody.classList.contains("hidden")) {
+    show("expenseFormBody", true);
+    const btn = formBody.previousElementSibling.querySelector("button");
+    if (btn) btn.textContent = "Plegar ▲";
+  }
 
   expenseBeingEdited = JSON.parse(JSON.stringify(item));
 
@@ -377,10 +503,10 @@ window.editExpense = function(id) {
   $("formTitle").textContent = "Editar gasto";
   $("saveBtn").textContent = "Guardar cambios";
   show("cancelEdit", true);
-  window.scrollTo({ top: $("expenseForm").offsetTop - 20, behavior: "smooth" });
+  window.scrollTo({ top: $("expenseForm").offsetTop - 40, behavior: "smooth" });
 };
 
-// FORMULARIO GASTOS (AÑADIR / EDITAR)
+// FORMULARIO GASTOS
 $("expenseForm").addEventListener("submit", async e => {
   e.preventDefault();
   const id = $("expenseId").value;
@@ -453,13 +579,9 @@ $("expenseForm").addEventListener("submit", async e => {
       if (old.payment_method !== paymentMethodVal) changes.push(`pago ${old.payment_method} a ${paymentMethodVal}`);
       if ((old.notes || '') !== notesVal) changes.push(`Obs: ${old.notes || 'sin obs'} a ${notesVal || 'sin obs'}`);
       
-      if (receiptUrl) {
-        changes.push("añade un ticket");
-      }
+      if (receiptUrl) changes.push("añade un ticket");
 
-      const detailsText = `Editó gasto ${changes.join(", ")}`;
-
-      await logActivity("Modificación de gasto", detailsText);
+      await logActivity("Modificación de gasto", `Editó gasto ${changes.join(", ")}`);
     }
   } else {
     payload.created_by = currentUserId;
@@ -492,7 +614,7 @@ function resetExpenseForm(){
 
 $("cancelEdit").onclick = resetExpenseForm;
 
-// ELIMINAR GASTO CON RESTRICCIÓN DE ROLES
+// ELIMINAR GASTO
 window.deleteExpense = async function(id) {
   const item = expenses.find(x => String(x.id) === String(id));
   if (!item) return;
@@ -540,7 +662,7 @@ $("settlementForm").addEventListener("submit", async e => {
   }
 });
 
-// ELIMINAR LIQUIDACIÓN CON RESTRICCIÓN DE ROLES
+// ELIMINAR LIQUIDACIÓN
 window.deleteSettlement = async function(id) {
   const item = settlements.find(x => String(x.id) === String(id));
   if (!item) return;
@@ -704,10 +826,14 @@ async function load(){
   expenses = eData || [];
   settlements = sData || [];
   render();
+  
+  // Visibilidad exclusiva para Roberto
   if (currentUserName === "Roberto") {
+    show("securitySection", true);
     show("auditLogSection", true);
     await loadAuditLogs();
   } else {
+    show("securitySection", false);
     show("auditLogSection", false);
   }
 }
