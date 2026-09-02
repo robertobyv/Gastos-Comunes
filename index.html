@@ -36,7 +36,7 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:
 .btn-sm{padding:5px 10px;font-size:0.85rem}
 .filter-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-top:12px}
 
-.collapsible-header{display:flex;justify-content:space-between;align-items:center}
+.collapsible-header{display:flex;justify-between:space-between;align-items:center}
 .collapsible-header h2{margin:0}
 .collapsible-header button{width:auto;padding:6px 14px;font-size:0.85rem}
 
@@ -398,8 +398,21 @@ $("expenseForm").addEventListener("submit", async e => {
       const old = expenseBeingEdited || {};
       let changes = [];
 
-      if (old.date !== dateVal) changes.push(`de fecha ${formatDate(old.date)} a fecha ${formatDate(dateVal)}`);
-      if (Number(old.amount) !== amountVal) changes.push(`de ${euro(old.amount)} a ${euro(amountVal)}`);
+      // FECHA (Siempre presente)
+      if (old.date !== dateVal) {
+        changes.push(`de fecha ${formatDate(old.date)} a fecha ${formatDate(dateVal)}`);
+      } else {
+        changes.push(`de fecha ${formatDate(dateVal)}`);
+      }
+
+      // IMPORTE (Siempre presente)
+      if (Number(old.amount) !== amountVal) {
+        changes.push(`de ${euro(old.amount)} a ${euro(amountVal)}`);
+      } else {
+        changes.push(`de ${euro(amountVal)}`);
+      }
+
+      // OTROS CAMPOS (Solo si cambian)
       if (old.payer !== payerVal) changes.push(`paga ${old.payer} a ${payerVal}`);
       if (old.for_whom !== forWhomVal) changes.push(`para ${old.for_whom} a ${forWhomVal}`);
       if (old.payment_method !== paymentMethodVal) changes.push(`pago ${old.payment_method} a ${paymentMethodVal}`);
@@ -407,13 +420,9 @@ $("expenseForm").addEventListener("submit", async e => {
       
       if (receiptUrl) {
         changes.push("añade un ticket");
-      } else if (old.receipt_url) {
-        changes.push("mantiene ticket existente");
       }
 
-      const detailsText = changes.length > 0 
-        ? `Editó gasto ${changes.join(", ")}`
-        : `Editó gasto #${id} (sin cambios significativos)`;
+      const detailsText = `Editó gasto ${changes.join(", ")}`;
 
       await logActivity("Modificación de gasto", detailsText);
     }
