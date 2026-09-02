@@ -35,7 +35,6 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:
 .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between}.toolbar button{width:auto}
 .btn-sm{padding:5px 10px;font-size:0.85rem}
 .filter-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-top:12px}
-.monthly-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
 
 .collapsible-header{display:flex;justify-content:space-between;align-items:center}
 .collapsible-header h2{margin:0}
@@ -50,7 +49,7 @@ tr.row-pending { background-color: #fffbeb; }
 .badge-settled { background: #f3f4f6; color: #6b7280; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
 .receipt-link { font-size: 0.85rem; color: #2563eb; text-decoration: none; font-weight: 600; }
 
-@media(max-width:700px){.grid,.summary,.filter-grid,.monthly-grid{grid-template-columns:1fr}.container{padding:12px}.toolbar{align-items:flex-start;flex-direction:column}.toolbar button{width:100%}}
+@media(max-width:700px){.grid,.summary,.filter-grid{grid-template-columns:1fr}.container{padding:12px}.toolbar{align-items:flex-start;flex-direction:column}.toolbar button{width:100%}}
 </style>
 </head>
 <body>
@@ -109,7 +108,7 @@ tr.row-pending { background-color: #fffbeb; }
     <div id="balance" class="balance">Cargando...</div>
   </section>
 
-  <!-- FORMULARIO GASTOS CON ADJUNTO DE TICKET -->
+  <!-- FORMULARIO GASTOS -->
   <section class="card">
     <h2 id="formTitle">Nuevo gasto</h2>
     <form id="expenseForm">
@@ -131,14 +130,14 @@ tr.row-pending { background-color: #fffbeb; }
     </form>
   </section>
 
+  <!-- LIQUIDAR CUENTAS -->
   <section class="card">
     <div class="collapsible-header">
       <h2>Liquidar cuentas</h2>
-      <button type="button" class="secondary btn-sm" onclick="toggleSection('settlementBody', this)">Desplegar ▼</button>
+      <button type="button" class="secondary btn-sm" id="toggleSettlementBtn">Desplegar ▼</button>
     </div>
     <div id="settlementBody" class="hidden" style="margin-top:14px">
       <p class="muted">Registra el pago que uno hace al otro para igualar las aportaciones.</p>
-      <div id="settlementSuggestion" class="balance">Cargando saldo...</div>
       <form id="settlementForm" style="margin-top:14px">
         <div class="grid">
           <div><label>Quién realiza el pago</label><select id="settlementPayer"><option>Roberto</option><option>Rocio</option></select></div>
@@ -150,20 +149,25 @@ tr.row-pending { background-color: #fffbeb; }
         <div class="actions">
           <button id="settlementSave" type="submit">Registrar liquidación</button>
         </div>
+        <div id="settlementError" class="notice error hidden"></div>
       </form>
     </div>
   </section>
 
+  <!-- FILTROS Y BÚSQUEDA -->
   <section class="card">
     <h2>Búsqueda y Filtros</h2>
     <div class="filter-grid">
-      <div><label>Buscar por texto</label><input id="searchInput" type="text" placeholder="Buscar por concepto, notas..."></div>
+      <div><label>Buscar por texto</label><input id="searchInput" type="text" placeholder="Buscar por concepto, notas, pagador..."></div>
       <div><label>Desde fecha</label><input id="filterFromDate" type="date"></div>
       <div><label>Hasta fecha</label><input id="filterToDate" type="date"></div>
     </div>
+    <div class="actions" style="margin-top:10px">
+      <button id="clearFiltersBtn" type="button" class="secondary btn-sm">Limpiar filtros</button>
+    </div>
   </section>
 
-  <!-- TABLA DE GASTOS CON EXPORTACIÓN A CSV -->
+  <!-- TABLA DE GASTOS -->
   <section class="card">
     <div class="toolbar">
       <h2>Gastos registrados</h2>
@@ -181,7 +185,7 @@ tr.row-pending { background-color: #fffbeb; }
     </div>
   </section>
 
-  <!-- TABLA DE LIQUIDACIONES CON EXPORTACIÓN A CSV -->
+  <!-- TABLA DE LIQUIDACIONES -->
   <section class="card">
     <div class="toolbar">
       <h2>Liquidaciones registradas</h2>
@@ -241,14 +245,20 @@ $("loginForm").addEventListener("submit", async e => {
   if (error) msg("loginNotice", "Error al acceder: " + error.message, true);
 });
 
-// AÑADIR / EDITAR GASTO CON TICKET EN SUPABASE STORAGE
+// DESPLEGAR SECCIÓN LIQUIDAR
+$("toggleSettlementBtn").onclick = function() {
+  const isHidden = $("settlementBody").classList.contains("hidden");
+  show("settlementBody", isHidden);
+  this.textContent = isHidden ? "Plegar ▲" : "Desplegar ▼";
+};
+
+// FORMULARIO GASTOS (AÑADIR / EDITAR)
 $("expenseForm").addEventListener("submit", async e => {
   e.preventDefault();
   const id = $("expenseId").value;
   const fileInput = $("receiptFile");
   let receiptUrl = null;
 
-  // Subida de imagen al bucket 'receipts' si se adjunta un archivo
   if (fileInput.files.length > 0) {
     const file = fileInput.files[0];
     const fileExt = file.name.split('.').pop();
@@ -285,15 +295,79 @@ $("expenseForm").addEventListener("submit", async e => {
   if (res.error) {
     msg("formError", "Error al guardar el gasto: " + res.error.message, true);
   } else {
-    $("expenseForm").reset();
-    $("expenseId").value = "";
-    $("date").value = new Date().toISOString().slice(0,10);
-    show("formError", false);
+    resetExpenseForm();
     await load();
   }
 });
 
-// FUNCIONES DE EXPORTACIÓN A CSV
+function resetExpenseForm(){
+  $("expenseForm").reset();
+  $("expenseId").value = "";
+  $("date").value = new Date().toISOString().slice(0,10);
+  $("formTitle").textContent = "Nuevo gasto";
+  $("saveBtn").textContent = "Añadir gasto";
+  show("cancelEdit", false);
+  show("formError", false);
+}
+
+$("cancelEdit").onclick = resetExpenseForm;
+
+// EDITAR Y ELIMINAR GASTO
+window.editExpense = function(id) {
+  const item = expenses.find(x => String(x.id) === String(id));
+  if (!item) return;
+
+  $("expenseId").value = item.id;
+  $("amount").value = item.amount;
+  $("date").value = item.date;
+  $("payer").value = item.payer;
+  $("forWhom").value = item.for_whom;
+  $("paymentMethod").value = item.payment_method;
+  $("notes").value = item.notes || "";
+
+  $("formTitle").textContent = "Editar gasto";
+  $("saveBtn").textContent = "Guardar cambios";
+  show("cancelEdit", true);
+  window.scrollTo({ top: $("expenseForm").offsetTop - 20, behavior: "smooth" });
+};
+
+window.deleteExpense = async function(id) {
+  if (!confirm("¿Seguro que deseas eliminar este gasto?")) return;
+  const { error } = await sb.from("expenses").delete().eq("id", id);
+  if (error) alert("Error al eliminar: " + error.message);
+  else await load();
+};
+
+// FORMULARIO LIQUIDACIÓN
+$("settlementForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const payload = {
+    payer: $("settlementPayer").value,
+    receiver: $("settlementReceiver").value,
+    amount: parseFloat($("settlementAmount").value),
+    date: $("settlementDate").value,
+    notes: $("settlementNotes").value
+  };
+
+  const { error } = await sb.from("settlements").insert([payload]);
+  if (error) {
+    msg("settlementError", "Error al guardar liquidación: " + error.message, true);
+  } else {
+    $("settlementForm").reset();
+    $("settlementDate").value = new Date().toISOString().slice(0,10);
+    show("settlementError", false);
+    await load();
+  }
+});
+
+window.deleteSettlement = async function(id) {
+  if (!confirm("¿Seguro que deseas eliminar esta liquidación?")) return;
+  const { error } = await sb.from("settlements").delete().eq("id", id);
+  if (error) alert("Error al eliminar: " + error.message);
+  else await load();
+};
+
+// EXPORTACIÓN CSV
 function exportToCSV(filename, rows) {
   const processRow = row => row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(";");
   const csvContent = "\uFEFF" + rows.map(processRow).join("\r\n");
@@ -316,7 +390,34 @@ $("exportSettlementsBtn").onclick = () => {
   exportToCSV(`Liquidaciones_Carlos_Noa_${new Date().toISOString().slice(0,10)}.csv`, [headers, ...rows]);
 };
 
-// CALCULOS Y RENDERIZADO
+// FILTROS
+function filterRecords(items){
+  const term = $("searchInput").value.toLowerCase().trim();
+  const fromDate = $("filterFromDate").value;
+  const toDate = $("filterToDate").value;
+  return items.filter(x => {
+    if(fromDate && x.date < fromDate) return false;
+    if(toDate && x.date > toDate) return false;
+    if(!term) return true;
+    return (x.notes||"").toLowerCase().includes(term) || 
+           (x.payer||"").toLowerCase().includes(term) || 
+           (x.for_whom||"").toLowerCase().includes(term) ||
+           (x.payment_method||"").toLowerCase().includes(term);
+  });
+}
+
+$("searchInput").oninput = render;
+$("filterFromDate").onchange = render;
+$("filterToDate").onchange = render;
+
+$("clearFiltersBtn").onclick = () => {
+  $("searchInput").value = "";
+  $("filterFromDate").value = "";
+  $("filterToDate").value = "";
+  render();
+};
+
+// RENDERIZADO GENERAL
 function render(){
   let lastSettlement = settlements.length ? [...settlements].sort((a,b)=> new Date(b.created_at||b.date) - new Date(a.created_at||a.date))[0] : null;
   const lastTime = lastSettlement ? new Date(lastSettlement.created_at || lastSettlement.date).getTime() : 0;
@@ -349,8 +450,9 @@ function render(){
     $("balance").textContent = `Roberto debe abonar a Rocio ${euro(pending)}`;
   }
 
-  // Render gastos
-  $("rows").innerHTML = expenses.map(x => {
+  // Render gastos filtrados
+  const filteredExpenses = filterRecords(expenses);
+  $("rows").innerHTML = filteredExpenses.map(x => {
     const isPending = !lastTime || new Date(x.created_at||x.date).getTime() > lastTime;
     return `<tr class="${isPending ? 'row-pending' : ''}">
       <td>${new Date(x.date + "T12:00:00").toLocaleDateString("es-ES")}</td>
@@ -367,10 +469,11 @@ function render(){
       </td>
     </tr>`;
   }).join("");
-  show("empty", expenses.length === 0);
+  show("empty", filteredExpenses.length === 0);
 
-  // Render liquidaciones
-  $("settlementRows").innerHTML = settlements.map(x => `
+  // Render liquidaciones filtradas
+  const filteredSettlements = filterRecords(settlements);
+  $("settlementRows").innerHTML = filteredSettlements.map(x => `
     <tr>
       <td>${new Date(x.date + "T12:00:00").toLocaleDateString("es-ES")}</td>
       <td>${euro(x.amount)}</td>
@@ -380,7 +483,7 @@ function render(){
       <td><button class="danger btn-sm" onclick="deleteSettlement('${x.id}')">Eliminar</button></td>
     </tr>
   `).join("");
-  show("settlementEmpty", settlements.length === 0);
+  show("settlementEmpty", filteredSettlements.length === 0);
 }
 
 async function load(){
@@ -403,7 +506,6 @@ function boot(){
     }
   });
 
-  // Registro de Service Worker para PWA
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
