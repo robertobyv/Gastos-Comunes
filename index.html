@@ -1,356 +1,713 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestión de Gastos y Liquidaciones</title>
-  <!-- Supabase JS Client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    :root {
-      --primary: #2563eb;
-      --danger: #ef4444;
-      --bg: #f8fafc;
-      --card-bg: #ffffff;
-      --text: #0f172a;
-      --border: #e2e8f0;
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gastos comunes de Carlos y Noa</title>
 
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      margin: 0;
-      padding: 20px;
-    }
+<!-- Soporte PWA / App Móvil -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111827">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-    }
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6f8;color:#1f2937;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.container{max-width:1100px;margin:auto;padding:20px}
+.card{background:#fff;border-radius:16px;padding:20px;margin:16px 0;box-shadow:0 2px 12px #0000000d}
+h1{margin:0 0 6px}.muted{color:#6b7280}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+label{font-weight:650;display:block;margin-bottom:6px}
+input,select,textarea,button{width:100%;font:inherit;padding:11px 12px;border:1px solid #d1d5db;border-radius:9px}
+textarea{min-height:72px;resize:vertical}
+button{border:0;background:#111827;color:#fff;font-weight:700;cursor:pointer}
+button:disabled{opacity:.4;cursor:not-allowed}
+.secondary{background:#e5e7eb;color:#111827}.danger{background:#b42318;color:#fff}
+.actions{display:flex;gap:10px;margin-top:14px}.actions button{width:auto}
+.stat{background:#f3f4f6;padding:15px;border-radius:12px}.stat small{color:#6b7280}.stat strong{display:block;font-size:1.45rem;margin-top:4px}
+.balance{margin-top:14px;background:#eef8ef;border-radius:12px;padding:15px;font-weight:650}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #eee;white-space:nowrap}th{color:#6b7280;font-size:.9rem}
+.notice{padding:10px 12px;border-radius:9px;background:#fff7ed;color:#9a3412;margin:10px 0}.error{background:#fef2f2;color:#991b1b}.success{background:#ecfdf5;color:#065f46}
+.hidden{display:none!important}.login{max-width:430px;margin:7vh auto}
+.toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between}.toolbar button{width:auto}
+.btn-sm{padding:5px 10px;font-size:0.85rem}
+.filter-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-top:12px}
 
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 2px solid var(--border);
-    }
+.collapsible-header{display:flex;justify-content:space-between;align-items:center}
+.collapsible-header h2{margin:0}
+.collapsible-header button{width:auto;padding:6px 14px;font-size:0.85rem}
 
-    .user-badge {
-      background: #e0e7ff;
-      color: #3730a3;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
+.password-wrapper{display:flex;gap:6px}
+.password-wrapper button{width:auto;padding:0 14px;background:#e5e7eb;color:#374151}
+.link-btn{background:none;border:none;color:#2563eb;padding:0;font-size:0.85rem;text-decoration:underline;cursor:pointer;width:auto;margin-top:10px}
 
-    section {
-      background: var(--card-bg);
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 24px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
+tr.row-pending { background-color: #fffbeb; }
+.badge-pending { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; border: 1px solid #fde68a; }
+.badge-settled { background: #f3f4f6; color: #6b7280; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+.receipt-link { font-size: 0.85rem; color: #2563eb; text-decoration: none; font-weight: 600; }
 
-    h2 {
-      margin-top: 0;
-      color: #1e293b;
-      font-size: 1.25rem;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
-    }
-
-    th, td {
-      text-align: left;
-      padding: 12px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    th {
-      background-color: #f1f5f9;
-      font-weight: 600;
-      color: #475569;
-    }
-
-    .btn-delete {
-      background-color: var(--danger);
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      transition: background 0.2s;
-    }
-
-    .btn-delete:hover {
-      background-color: #dc2626;
-    }
-
-    .btn-delete:disabled {
-      background-color: #cbd5e1;
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-
-    .badge-creator {
-      font-size: 0.75rem;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: #f1f5f9;
-      color: #64748b;
-    }
-  </style>
+@media(max-width:700px){.grid,.summary,.filter-grid{grid-template-columns:1fr}.container{padding:12px}.toolbar{align-items:flex-start;flex-direction:column}.toolbar button{width:100%}}
+</style>
 </head>
 <body>
 
-  <div class="container">
-    <header>
-      <h1>Control de Gastos</h1>
-      <div id="user-info" class="user-badge">Cargando usuario...</div>
-    </header>
+<!-- LOGIN -->
+<div id="loginView" class="login card">
+  <h1>Gastos comunes</h1>
+  <p class="muted">Carlos y Noa · acceso privado</p>
+  
+  <form id="loginForm">
+    <label>Usuario</label>
+    <select id="username" required>
+      <option value="Roberto">Roberto</option>
+      <option value="Rocio">Rocio</option>
+    </select>
+    
+    <label style="margin-top:12px">Contraseña</label>
+    <div class="password-wrapper">
+      <input id="password" type="password" required autocomplete="current-password">
+      <button type="button" id="togglePassword">👁️</button>
+    </div>
+    
+    <button style="margin-top:14px">Entrar</button>
+    <button type="button" id="showForgotBtn" class="link-btn">¿Has olvidado tu contraseña?</button>
+  </form>
 
-    <!-- TABLA DE GASTOS -->
-    <section>
-      <h2>Gastos (`expenses`)</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Pagado por</th>
-            <th>Para quien</th>
-            <th>Importe</th>
-            <th>Notas</th>
-            <th>Creado por</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
-        <tbody id="expenses-list">
-          <tr><td colspan="7">Cargando datos...</td></tr>
-        </tbody>
-      </table>
-    </section>
+  <form id="forgotForm" class="hidden" style="margin-top:16px; border-top:1px solid #eee; padding-top:12px;">
+    <h3>Recuperar contraseña</h3>
+    <p class="muted" style="font-size:0.85rem">Introduce tu correo real para recibir el enlace de restablecimiento.</p>
+    <label>Email de destino</label>
+    <input id="recoveryEmail" type="email" placeholder="ejemplo@gmail.com" required>
+    <div class="actions">
+      <button type="submit">Enviar enlace</button>
+      <button type="button" id="cancelForgotBtn" class="secondary">Cancelar</button>
+    </div>
+  </form>
 
-    <!-- TABLA DE LIQUIDACIONES -->
-    <section>
-      <h2>Liquidaciones (`settlements`)</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Pagador</th>
-            <th>Receptor</th>
-            <th>Importe</th>
-            <th>Notas</th>
-            <th>Creado por</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
-        <tbody id="settlements-list">
-          <tr><td colspan="7">Cargando datos...</td></tr>
-        </tbody>
-      </table>
-    </section>
+  <div id="loginNotice" class="notice hidden"></div>
+</div>
+
+<!-- VISTA PRINCIPAL -->
+<div id="appView" class="container hidden">
+  <div class="toolbar">
+    <div><h1>Gastos comunes · Carlos y Noa</h1><div class="muted">Datos compartidos online</div></div>
+    <button id="logout" class="secondary">Cerrar sesión</button>
   </div>
 
-  <script>
-    // 1. Configuración de Supabase
-    const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
-    const SUPABASE_ANON_KEY = 'TU-ANON-KEY';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <section class="card">
+    <h2>Resumen ciclo actual</h2>
+    <div class="summary">
+      <div class="stat"><small>Total gastos Roberto</small><strong id="totalRoberto">0,00 €</strong></div>
+      <div class="stat"><small>Total gastos Rocio</small><strong id="totalRocio">0,00 €</strong></div>
+      <div class="stat"><small>Diferencia de gastos</small><strong id="difference">0,00 €</strong></div>
+      <div class="stat"><small>Saldo pendiente</small><strong id="pendingBalance">0,00 €</strong></div>
+    </div>
+    <div id="balance" class="balance">Cargando...</div>
+  </section>
 
-    // Estado del usuario activo
-    let currentUser = null;
-    let profilesMap = {}; // Mapa ID -> Nombre (ej. roberto, rocio)
+  <!-- FORMULARIO GASTOS -->
+  <section class="card">
+    <h2 id="formTitle">Nuevo gasto</h2>
+    <form id="expenseForm">
+      <input id="expenseId" type="hidden">
+      <div class="grid">
+        <div><label>Cantidad (€)</label><input id="amount" type="number" min=".01" step=".01" required></div>
+        <div><label>Fecha</label><input id="date" type="date" required></div>
+        <div><label>Quién paga</label><select id="payer"><option>Roberto</option><option>Rocio</option></select></div>
+        <div><label>Para quién es</label><select id="forWhom"><option>Carlos</option><option>Noa</option><option>Carlos y Noa</option></select></div>
+        <div><label>Forma de pago</label><select id="paymentMethod"><option selected>Tarjeta</option><option>Efectivo</option></select></div>
+        <div><label>Observaciones</label><input id="notes" maxlength="500" placeholder="Opcional"></div>
+        <div><label>Ticket / Comprobante (Opcional)</label><input id="receiptFile" type="file" accept="image/*,application/pdf"></div>
+      </div>
+      <div class="actions">
+        <button id="saveBtn" type="submit">Añadir gasto</button>
+        <button id="cancelEdit" type="button" class="secondary hidden">Cancelar edición</button>
+      </div>
+      <div id="formError" class="notice error hidden"></div>
+    </form>
+  </section>
 
-    // Inicialización
-    async function init() {
-      await loadProfiles();
-      await checkCurrentUser();
-      await Promise.all([loadExpenses(), loadSettlements()]);
+  <!-- LIQUIDAR CUENTAS -->
+  <section class="card">
+    <div class="collapsible-header">
+      <h2>Liquidar cuentas</h2>
+      <button type="button" class="secondary btn-sm" id="toggleSettlementBtn">Desplegar ▼</button>
+    </div>
+    <div id="settlementBody" class="hidden" style="margin-top:14px">
+      <p class="muted">Registra el pago que uno hace al otro para igualar las aportaciones.</p>
+      <form id="settlementForm" style="margin-top:14px">
+        <div class="grid">
+          <div><label>Quién realiza el pago</label><select id="settlementPayer"><option>Roberto</option><option>Rocio</option></select></div>
+          <div><label>Quién recibe</label><select id="settlementReceiver"><option>Rocio</option><option>Roberto</option></select></div>
+          <div><label>Cantidad (€)</label><input id="settlementAmount" type="number" min=".01" step=".01" required></div>
+          <div><label>Fecha</label><input id="settlementDate" type="date" required></div>
+          <div><label>Observaciones</label><input id="settlementNotes" maxlength="500" placeholder="Ej.: Transferencia para igualar gastos"></div>
+        </div>
+        <div class="actions">
+          <button id="settlementSave" type="submit">Registrar liquidación</button>
+        </div>
+        <div id="settlementError" class="notice error hidden"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- FILTROS Y BÚSQUEDA -->
+  <section class="card">
+    <h2>Búsqueda y Filtros</h2>
+    <div class="filter-grid">
+      <div><label>Buscar por texto</label><input id="searchInput" type="text" placeholder="Buscar por concepto, notas, pagador..."></div>
+      <div><label>Desde fecha</label><input id="filterFromDate" type="date"></div>
+      <div><label>Hasta fecha</label><input id="filterToDate" type="date"></div>
+    </div>
+    <div class="actions" style="margin-top:10px">
+      <button id="clearFiltersBtn" type="button" class="secondary btn-sm">Limpiar filtros</button>
+    </div>
+  </section>
+
+  <!-- TABLA DE GASTOS -->
+  <section class="card">
+    <div class="toolbar">
+      <h2>Gastos registrados</h2>
+      <div>
+        <button id="exportExpensesBtn" class="secondary btn-sm">📄 Exportar a CSV</button>
+        <button id="refresh" class="secondary btn-sm">Actualizar</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Cantidad</th><th>Paga</th><th>Para</th><th>Pago</th><th>Observaciones</th><th>Ticket</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p id="empty" class="muted" style="text-align:center">No hay gastos registrados.</p>
+    </div>
+  </section>
+
+  <!-- TABLA DE LIQUIDACIONES -->
+  <section class="card">
+    <div class="toolbar">
+      <h2>Liquidaciones registradas</h2>
+      <div>
+        <button id="exportSettlementsBtn" class="secondary btn-sm">📄 Exportar a CSV</button>
+        <button id="refreshSettlements" class="secondary btn-sm">Actualizar</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Cantidad</th><th>Paga</th><th>Recibe</th><th>Observaciones</th><th>Acciones</th></tr></thead>
+        <tbody id="settlementRows"></tbody>
+      </table>
+      <p id="settlementEmpty" class="muted" style="text-align:center">No hay liquidaciones registradas.</p>
+    </div>
+  </section>
+
+  <!-- LOG DE AUDITORÍA (SOLO VISIBLE PARA ROBERTO) -->
+  <section id="auditLogSection" class="card hidden">
+    <div class="toolbar">
+      <h2>📜 Historial de Actividad (Auditoría)</h2>
+      <button id="refreshLogs" class="secondary btn-sm">Actualizar Log</button>
+    </div>
+    <p class="muted" style="font-size:0.85rem">Historial exclusivo para administración. Muestra accesos, creaciones, modificaciones y eliminaciones.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha / Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead>
+        <tbody id="logRows"></tbody>
+      </table>
+      <p id="logsEmpty" class="muted" style="text-align:center">No hay registros de actividad.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+const SUPABASE_URL = "https://cczzgwxahmsqhkhnfnin.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Kc5V9D0k7c9LJEtDUmk6Ew_oci9Utu0";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let expenses = [];
+let settlements = [];
+let currentUserEmail = "";
+let currentUserName = "";
+let currentUserId = null;
+let expenseBeingEdited = null;
+
+const $ = id => document.getElementById(id);
+$("date").value = new Date().toISOString().slice(0,10);
+$("settlementDate").value = new Date().toISOString().slice(0,10);
+
+function euro(n){ return Number(n).toLocaleString("es-ES",{style:"currency",currency:"EUR"}); }
+function esc(s){ return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
+function show(id,on=true){ $(id).classList.toggle("hidden",!on); }
+function msg(id,text,isError=true){ 
+  const el = $(id);
+  el.textContent = text; 
+  el.className = `notice ${isError ? 'error' : 'success'}`;
+  show(id, true); 
+}
+
+// COMPROBACIÓN DE PERMISOS DE ELIMINACIÓN
+function canDeleteRecord(createdBy) {
+  if (currentUserName === "Roberto") return true;
+  return createdBy && createdBy === currentUserId;
+}
+
+// REGISTRO DE AUDITORÍA (LOGS)
+async function logActivity(action, details) {
+  try {
+    await sb.from("activity_logs").insert([{
+      user_name: currentUserName || "Desconocido",
+      action: action,
+      details: details
+    }]);
+  } catch(e){
+    console.error("Error al guardar log:", e);
+  }
+}
+
+async function loadAuditLogs(){
+  if (currentUserName !== "Roberto") return;
+  const { data, error } = await sb.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(100);
+  if (!error && data) {
+    $("logRows").innerHTML = data.map(l => `
+      <tr>
+        <td>${new Date(l.created_at).toLocaleString("es-ES")}</td>
+        <td><strong>${esc(l.user_name)}</strong></td>
+        <td>${esc(l.action)}</td>
+        <td>${esc(l.details)}</td>
+      </tr>
+    `).join("");
+    show("logsEmpty", data.length === 0);
+  }
+}
+
+// LOGIN
+$("togglePassword").onclick = () => {
+  const pwd = $("password");
+  pwd.type = pwd.type === "password" ? "text" : "password";
+};
+
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const userInput = $("username").value.trim();
+  const password = $("password").value;
+  
+  let targetEmail = userInput;
+  if (userInput === "Roberto") targetEmail = "robertobyv@gmail.com";
+  if (userInput === "Rocio") targetEmail = "rociogarciaw@gmail.com";
+
+  const { data, error } = await sb.auth.signInWithPassword({ email: targetEmail, password });
+  if (error) {
+    msg("loginNotice", "Error al acceder: " + error.message, true);
+  } else {
+    currentUserName = userInput;
+    currentUserId = data.user.id;
+    await logActivity("Inicio de sesión", "Acceso concedido a la aplicación");
+  }
+});
+
+// RECUPERAR CONTRASEÑA
+$("showForgotBtn").onclick = () => show("forgotForm", true);
+$("cancelForgotBtn").onclick = () => show("forgotForm", false);
+
+$("forgotForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = $("recoveryEmail").value.trim();
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href
+  });
+  if (error) {
+    msg("loginNotice", "Error al solicitar recuperación: " + error.message, true);
+  } else {
+    msg("loginNotice", "Se ha enviado un correo con instrucciones para restablecer la contraseña.", false);
+    show("forgotForm", false);
+  }
+});
+
+// DESPLEGAR SECCIÓN LIQUIDAR
+$("toggleSettlementBtn").onclick = function() {
+  const isHidden = $("settlementBody").classList.contains("hidden");
+  show("settlementBody", isHidden);
+  this.textContent = isHidden ? "Plegar ▲" : "Desplegar ▼";
+};
+
+// EDITAR GASTO
+window.editExpense = function(id) {
+  const item = expenses.find(x => String(x.id) === String(id));
+  if (!item) return;
+
+  expenseBeingEdited = JSON.parse(JSON.stringify(item));
+
+  $("expenseId").value = item.id;
+  $("amount").value = item.amount;
+  $("date").value = item.date;
+  $("payer").value = item.payer;
+  $("forWhom").value = item.for_whom;
+  $("paymentMethod").value = item.payment_method;
+  $("notes").value = item.notes || "";
+
+  $("formTitle").textContent = "Editar gasto";
+  $("saveBtn").textContent = "Guardar cambios";
+  show("cancelEdit", true);
+  window.scrollTo({ top: $("expenseForm").offsetTop - 20, behavior: "smooth" });
+};
+
+// FORMULARIO GASTOS (AÑADIR / EDITAR)
+$("expenseForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const id = $("expenseId").value;
+  const fileInput = $("receiptFile");
+  let receiptUrl = null;
+
+  if (fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+    const { data: uploadData, error: uploadError } = await sb.storage
+      .from('receipts')
+      .upload(fileName, file);
+
+    if (!uploadError) {
+      const { data: urlData } = sb.storage.from('receipts').getPublicUrl(fileName);
+      receiptUrl = urlData.publicUrl;
     }
+  }
 
-    // Carga los perfiles para mapear los UUIDs de created_by
-    async function loadProfiles() {
-      const { data, error } = await supabase.from('profiles').select('id, name, email');
-      if (!error && data) {
-        data.forEach(p => {
-          profilesMap[p.id] = p;
-        });
-      }
-    }
+  const amountVal = parseFloat($("amount").value);
+  const dateVal = $("date").value;
+  const payerVal = $("payer").value;
+  const forWhomVal = $("forWhom").value;
+  const paymentMethodVal = $("paymentMethod").value;
+  const notesVal = $("notes").value;
 
-    // Obtener sesión/usuario actual de Supabase Auth
-    async function checkCurrentUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const profile = profilesMap[user.id] || {};
-        currentUser = {
-          id: user.id,
-          email: user.email,
-          name: profile.name || user.email.split('@')[0]
-        };
-        document.getElementById('user-info').innerText = `Usuario: ${currentUser.name}`;
+  const payload = {
+    amount: amountVal,
+    date: dateVal,
+    payer: payerVal,
+    for_whom: forWhomVal,
+    payment_method: paymentMethodVal,
+    notes: notesVal
+  };
+
+  if (receiptUrl) payload.receipt_url = receiptUrl;
+
+  let res;
+  if (id) {
+    res = await sb.from("expenses").update(payload).eq("id", id);
+    
+    if (!res.error) {
+      const formatDate = (dStr) => {
+        if (!dStr) return "N/A";
+        const [y, m, d] = dStr.split("-");
+        return `${d}/${m}/${y.slice(-2)}`;
+      };
+
+      const old = expenseBeingEdited || {};
+      let changes = [];
+
+      if (old.date !== dateVal) {
+        changes.push(`de fecha ${formatDate(old.date)} a fecha ${formatDate(dateVal)}`);
       } else {
-        document.getElementById('user-info').innerText = 'Sesión no iniciada';
+        changes.push(`de fecha ${formatDate(dateVal)}`);
       }
-    }
 
-    // Determina si el usuario actual tiene permisos para eliminar un registro específico
-    function canDelete(recordCreatedBy) {
-      if (!currentUser) return false;
+      if (Number(old.amount) !== amountVal) {
+        changes.push(`de ${euro(old.amount)} a ${euro(amountVal)}`);
+      } else {
+        changes.push(`de ${euro(amountVal)}`);
+      }
+
+      if (old.payer !== payerVal) changes.push(`paga ${old.payer} a ${payerVal}`);
+      if (old.for_whom !== forWhomVal) changes.push(`para ${old.for_whom} a ${forWhomVal}`);
+      if (old.payment_method !== paymentMethodVal) changes.push(`pago ${old.payment_method} a ${paymentMethodVal}`);
+      if ((old.notes || '') !== notesVal) changes.push(`Obs: ${old.notes || 'sin obs'} a ${notesVal || 'sin obs'}`);
       
-      const isRoberto = currentUser.email.toLowerCase().includes('roberto') || 
-                        (currentUser.name && currentUser.name.toLowerCase().includes('roberto'));
-      
-      // Roberto puede eliminar CUALQUIER registro
-      if (isRoberto) return true;
+      if (receiptUrl) {
+        changes.push("añade un ticket");
+      }
 
-      // Rocío u otros usuarios solo pueden eliminar si coinciden con created_by
-      return recordCreatedBy === currentUser.id;
+      const detailsText = `Editó gasto ${changes.join(", ")}`;
+
+      await logActivity("Modificación de gasto", detailsText);
     }
-
-    // 2. Cargar y renderizar Gastos
-    async function loadExpenses() {
-      const { data: expenses, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .order('date', { ascending: false });
-
-      const tbody = document.getElementById('expenses-list');
-      tbody.innerHTML = '';
-
-      if (error) {
-        tbody.innerHTML = `<tr><td colspan="7">Error al cargar gastos: ${error.message}</td></tr>`;
-        return;
-      }
-
-      if (expenses.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7">No hay gastos registrados.</td></tr>';
-        return;
-      }
-
-      expenses.forEach(item => {
-        const creator = profilesMap[item.created_by]?.name || 'Desconocido';
-        const allowed = canDelete(item.created_by);
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${item.date || ''}</td>
-          <td>${item.payer || ''}</td>
-          <td>${item.for_whom || ''}</td>
-          <td><strong>${item.amount} €</strong></td>
-          <td>${item.notes || '-'}</td>
-          <td><span class="badge-creator">${creator}</span></td>
-          <td>
-            <button 
-              class="btn-delete" 
-              ${allowed ? '' : 'disabled title="Solo el creador o Roberto pueden eliminar este gasto"'}
-              onclick="deleteExpense('${item.id}', '${item.created_by}')">
-              Eliminar
-            </button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
+  } else {
+    payload.created_by = currentUserId;
+    res = await sb.from("expenses").insert([payload]);
+    if (!res.error) {
+      const ticketText = receiptUrl ? " con ticket" : "";
+      await logActivity("Nuevo gasto", `Añadió gasto por ${euro(amountVal)} (${payerVal}) para ${forWhomVal}. Obs: ${notesVal || 'sin obs'}${ticketText}`);
     }
+  }
 
-    // 3. Cargar y renderizar Liquidaciones
-    async function loadSettlements() {
-      const { data: settlements, error } = await supabase
-        .from('settlements')
-        .select('*')
-        .order('date', { ascending: false });
+  if (res.error) {
+    msg("formError", "Error al guardar el gasto: " + res.error.message, true);
+  } else {
+    resetExpenseForm();
+    await load();
+  }
+});
 
-      const tbody = document.getElementById('settlements-list');
-      tbody.innerHTML = '';
+function resetExpenseForm(){
+  $("expenseForm").reset();
+  $("expenseId").value = "";
+  $("date").value = new Date().toISOString().slice(0,10);
+  $("formTitle").textContent = "Nuevo gasto";
+  $("saveBtn").textContent = "Añadir gasto";
+  expenseBeingEdited = null;
+  show("cancelEdit", false);
+  show("formError", false);
+}
 
-      if (error) {
-        tbody.innerHTML = `<tr><td colspan="7">Error al cargar liquidaciones: ${error.message}</td></tr>`;
-        return;
-      }
+$("cancelEdit").onclick = resetExpenseForm;
 
-      if (settlements.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7">No hay liquidaciones registradas.</td></tr>';
-        return;
-      }
+// ELIMINAR GASTO CON RESTRICCIÓN DE ROLES
+window.deleteExpense = async function(id) {
+  const item = expenses.find(x => String(x.id) === String(id));
+  if (!item) return;
 
-      settlements.forEach(item => {
-        const creator = profilesMap[item.created_by]?.name || 'Desconocido';
-        const allowed = canDelete(item.created_by);
+  if (!canDeleteRecord(item.created_by)) {
+    alert("No tienes permisos para eliminar los registros creados por Roberto.");
+    return;
+  }
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${item.date || ''}</td>
-          <td>${item.payer || ''}</td>
-          <td>${item.receiver || ''}</td>
-          <td><strong>${item.amount} €</strong></td>
-          <td>${item.notes || '-'}</td>
-          <td><span class="badge-creator">${creator}</span></td>
-          <td>
-            <button 
-              class="btn-delete" 
-              ${allowed ? '' : 'disabled title="Solo el creador o Roberto pueden eliminar esta liquidación"'}
-              onclick="deleteSettlement('${item.id}', '${item.created_by}')">
-              Eliminar
-            </button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
+  if (!confirm("¿Seguro que deseas eliminar este gasto?")) return;
+  const { error } = await sb.from("expenses").delete().eq("id", id);
+  if (error) {
+    alert("Error al eliminar: " + error.message);
+  } else {
+    await logActivity("Eliminación de gasto", `Eliminó gasto por ${euro(item?.amount||0)} de ${item?.payer||'N/A'}. Obs: ${item?.notes||''}`);
+    await load();
+  }
+};
+
+// FORMULARIO LIQUIDACIÓN
+$("settlementForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const amt = parseFloat($("settlementAmount").value);
+  const p = $("settlementPayer").value;
+  const r = $("settlementReceiver").value;
+
+  const payload = {
+    payer: p,
+    receiver: r,
+    amount: amt,
+    date: $("settlementDate").value,
+    notes: $("settlementNotes").value,
+    created_by: currentUserId
+  };
+
+  const { error } = await sb.from("settlements").insert([payload]);
+  if (error) {
+    msg("settlementError", "Error al guardar liquidación: " + error.message, true);
+  } else {
+    await logActivity("Nueva liquidación", `Registró pago de ${euro(amt)} (${p} -> ${r})`);
+    $("settlementForm").reset();
+    $("settlementDate").value = new Date().toISOString().slice(0,10);
+    show("settlementError", false);
+    await load();
+  }
+});
+
+// ELIMINAR LIQUIDACIÓN CON RESTRICCIÓN DE ROLES
+window.deleteSettlement = async function(id) {
+  const item = settlements.find(x => String(x.id) === String(id));
+  if (!item) return;
+
+  if (!canDeleteRecord(item.created_by)) {
+    alert("No tienes permisos para eliminar las liquidaciones creadas por Roberto.");
+    return;
+  }
+
+  if (!confirm("¿Seguro que deseas eliminar esta liquidación?")) return;
+  const { error } = await sb.from("settlements").delete().eq("id", id);
+  if (error) {
+    alert("Error al eliminar: " + error.message);
+  } else {
+    await logActivity("Eliminación de liquidación", `Eliminó liquidación por ${euro(item?.amount||0)} (${item?.payer} -> ${item?.receiver})`);
+    await load();
+  }
+};
+
+// EXPORTACIÓN CSV
+function exportToCSV(filename, rows) {
+  const processRow = row => row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(";");
+  const csvContent = "\uFEFF" + rows.map(processRow).join("\r\n");
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+$("exportExpensesBtn").onclick = () => {
+  const headers = ["Fecha", "Cantidad", "Paga", "Para", "Forma Pago", "Observaciones", "Comprobante"];
+  const rows = expenses.map(x => [x.date, x.amount, x.payer, x.for_whom, x.payment_method, x.notes, x.receipt_url || ""]);
+  exportToCSV(`Gastos_Carlos_Noa_${new Date().toISOString().slice(0,10)}.csv`, [headers, ...rows]);
+};
+
+$("exportSettlementsBtn").onclick = () => {
+  const headers = ["Fecha", "Cantidad", "Paga", "Recibe", "Observaciones"];
+  const rows = settlements.map(x => [x.date, x.amount, x.payer, x.receiver, x.notes]);
+  exportToCSV(`Liquidaciones_Carlos_Noa_${new Date().toISOString().slice(0,10)}.csv`, [headers, ...rows]);
+};
+
+// FILTROS
+function filterRecords(items){
+  const term = $("searchInput").value.toLowerCase().trim();
+  const fromDate = $("filterFromDate").value;
+  const toDate = $("filterToDate").value;
+  return items.filter(x => {
+    if(fromDate && x.date < fromDate) return false;
+    if(toDate && x.date > toDate) return false;
+    if(!term) return true;
+    return (x.notes||"").toLowerCase().includes(term) || 
+           (x.payer||"").toLowerCase().includes(term) || 
+           (x.for_whom||"").toLowerCase().includes(term) ||
+           (x.payment_method||"").toLowerCase().includes(term);
+  });
+}
+
+$("searchInput").oninput = render;
+$("filterFromDate").onchange = render;
+$("filterToDate").onchange = render;
+
+$("clearFiltersBtn").onclick = () => {
+  $("searchInput").value = "";
+  $("filterFromDate").value = "";
+  $("filterToDate").value = "";
+  render();
+};
+
+// RENDERIZADO GENERAL
+function render(){
+  let lastSettlement = settlements.length ? [...settlements].sort((a,b)=> new Date(b.created_at||b.date) - new Date(a.created_at||a.date))[0] : null;
+  const lastTime = lastSettlement ? new Date(lastSettlement.created_at || lastSettlement.date).getTime() : 0;
+
+  const currentExpenses = expenses.filter(x => !lastTime || new Date(x.created_at||x.date).getTime() > lastTime);
+  const currentSettlements = settlements.filter(x => lastTime && new Date(x.created_at||x.date).getTime() > lastTime);
+
+  const rReal = currentExpenses.filter(x => x.payer === "Roberto").reduce((a, x) => a + Number(x.amount), 0);
+  const cReal = currentExpenses.filter(x => x.payer === "Rocio").reduce((a, x) => a + Number(x.amount), 0);
+  const dReal = Math.abs(rReal - cReal);
+
+  const netTowardRoberto = currentSettlements.reduce((s, x) => {
+    const a = Number(x.amount);
+    return x.payer === "Rocio" ? s + a : s - a;
+  }, 0);
+
+  const rawNeed = (rReal - cReal) / 2 - netTowardRoberto;
+  const pending = Math.abs(rawNeed);
+
+  $("totalRoberto").textContent = euro(rReal);
+  $("totalRocio").textContent = euro(cReal);
+  $("difference").textContent = euro(dReal);
+  $("pendingBalance").textContent = euro(pending);
+
+  if (rawNeed === 0) {
+    $("balance").textContent = "Cuentas al día: no hay saldo pendiente.";
+  } else if (rawNeed > 0) {
+    $("balance").textContent = `Rocio debe abonar a Roberto ${euro(pending)}`;
+  } else {
+    $("balance").textContent = `Roberto debe abonar a Rocio ${euro(pending)}`;
+  }
+
+  // Render gastos
+  const filteredExpenses = filterRecords(expenses);
+  $("rows").innerHTML = filteredExpenses.map(x => {
+    const isPending = !lastTime || new Date(x.created_at||x.date).getTime() > lastTime;
+    const allowed = canDeleteRecord(x.created_by);
+    
+    return `<tr class="${isPending ? 'row-pending' : ''}">
+      <td>${new Date(x.date + "T12:00:00").toLocaleDateString("es-ES")}</td>
+      <td>${euro(x.amount)}</td>
+      <td>${esc(x.payer)}</td>
+      <td>${esc(x.for_whom)}</td>
+      <td>${esc(x.payment_method)}</td>
+      <td>${esc(x.notes)}</td>
+      <td>${x.receipt_url ? `<a href="${x.receipt_url}" target="_blank" class="receipt-link">📎 Ver ticket</a>` : '-'}</td>
+      <td><span class="${isPending ? 'badge-pending' : 'badge-settled'}">${isPending ? 'Sin liquidar' : 'Liquidado'}</span></td>
+      <td>
+        <button class="secondary btn-sm" onclick="editExpense('${x.id}')">Editar</button>
+        ${isPending ? `
+          <button 
+            class="danger btn-sm" 
+            ${allowed ? '' : 'disabled title="Solo el creador del registro o Roberto pueden eliminarlo"'} 
+            onclick="deleteExpense('${x.id}')">
+            Eliminar
+          </button>
+        ` : ''}
+      </td>
+    </tr>`;
+  }).join("");
+  show("empty", filteredExpenses.length === 0);
+
+  // Render liquidaciones
+  const filteredSettlements = filterRecords(settlements);
+  $("settlementRows").innerHTML = filteredSettlements.map(x => {
+    const allowed = canDeleteRecord(x.created_by);
+
+    return `
+    <tr>
+      <td>${new Date(x.date + "T12:00:00").toLocaleDateString("es-ES")}</td>
+      <td>${euro(x.amount)}</td>
+      <td>${esc(x.payer)}</td>
+      <td>${esc(x.receiver)}</td>
+      <td>${esc(x.notes)}</td>
+      <td>
+        <button 
+          class="danger btn-sm" 
+          ${allowed ? '' : 'disabled title="Solo el creador del registro o Roberto pueden eliminarlo"'} 
+          onclick="deleteSettlement('${x.id}')">
+          Eliminar
+        </button>
+      </td>
+    </tr>`;
+  }).join("");
+  show("settlementEmpty", filteredSettlements.length === 0);
+}
+
+async function load(){
+  const {data:eData} = await sb.from("expenses").select("*").order("date",{ascending:false});
+  const {data:sData} = await sb.from("settlements").select("*").order("date",{ascending:false});
+  expenses = eData || [];
+  settlements = sData || [];
+  render();
+  if (currentUserName === "Roberto") {
+    show("auditLogSection", true);
+    await loadAuditLogs();
+  } else {
+    show("auditLogSection", false);
+  }
+}
+
+function boot(){
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session) {
+      currentUserEmail = session.user.email;
+      currentUserId = session.user.id;
+      currentUserName = currentUserEmail.includes("robertobyv") ? "Roberto" : "Rocio";
+      show("loginView", false);
+      show("appView", true);
+      await load();
+    } else {
+      currentUserId = null;
+      show("appView", false);
+      show("loginView", true);
     }
+  });
 
-    // 4. Acción de borrado de Gasto
-    async function deleteExpense(id, createdBy) {
-      if (!canDelete(createdBy)) {
-        alert('No tienes permiso para eliminar este gasto.');
-        return;
-      }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+}
 
-      if (confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
-        const { error } = await supabase
-          .from('expenses')
-          .delete()
-          .eq('id', id);
+$("logout").onclick = () => sb.auth.signOut();
+$("refresh").onclick = () => load();
+$("refreshSettlements").onclick = () => load();
+$("refreshLogs").onclick = () => loadAuditLogs();
 
-        if (error) {
-          alert('Error al eliminar: ' + error.message);
-        } else {
-          loadExpenses();
-        }
-      }
-    }
-
-    // 5. Acción de borrado de Liquidación
-    async function deleteSettlement(id, createdBy) {
-      if (!canDelete(createdBy)) {
-        alert('No tienes permiso para eliminar esta liquidación.');
-        return;
-      }
-
-      if (confirm('¿Estás seguro de que deseas eliminar esta liquidación?')) {
-        const { error } = await supabase
-          .from('settlements')
-          .delete()
-          .eq('id', id);
-
-        if (error) {
-          alert('Error al eliminar: ' + error.message);
-        } else {
-          loadSettlements();
-        }
-      }
-    }
-
-    // Ejecutar al cargar la página
-    document.addEventListener('DOMContentLoaded', init);
-  </script>
+boot();
+</script>
 </body>
 </html>
